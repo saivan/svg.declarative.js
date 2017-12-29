@@ -1,0 +1,32 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Transform test</title>
+    </head>
+    <body>
+
+    <h1>Transformation Test</h1>
+
+    <p>
+        This test checks whether we can break a transformation matrix into a
+        set of affine transformations. If it worked, the red line should
+        be on top of the orange line, so you won't see orange.
+    </p>
+
+    <svg viewbox="0 0 400 400" width=800px>
+      <g>
+         <path d="M10 80 C 10 10, 15 10, 35 30 S 50 50, 60 10" stroke="blue" fill="transparent"/>
+         <path id="blue" d="M10 80 C 10 10, 15 10, 35 30 S 50 50, 60 10" stroke="orange" fill="transparent" transform="matrix(2, -1, 0, 1, 150, 70)"/>
+         <path id="red" d="M10 80 C 10 10, 15 10, 35 30 S 50 50, 60 10" stroke=#f00b fill="transparent"/>
+      </g>
+    </svg>
+
+    </body>
+
+    <!-- webpack has a mime type bug for now, so we are just using a cdn -->
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/2.6.3/svg.js" charset="utf-8"></script>
+    <script type="text/javascript" src="./bundle.js" charset="utf-8"></script>
+
+</html>
