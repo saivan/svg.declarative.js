@@ -58,9 +58,9 @@ module.exports = function (env) {
     // Otherwise we are building the bundle directly
     } else {
 
-        config.entry = './source/main.js'
+        config.entry = './source/declarative.js'
         config.output = {
-            path: path.resolve(__dirname),
+            path: path.resolve(__dirname, "distribute"),
             filename: 'svg.declarative.js'
         }
     }

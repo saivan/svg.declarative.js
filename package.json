@@ -5,7 +5,7 @@
     "main": "svg.declarative.js",
     "scripts": {
         "demo": "run () { ./node_modules/.bin/webpack-dev-server --env.demoName=$1; }; run",
-        "webpack": "webpack"
+        "build": "webpack"
     },
     "repository": {
         "type": "git",
