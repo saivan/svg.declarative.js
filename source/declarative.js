@@ -1,7 +1,7 @@
 
 import {compose, decompose} from "declarative/affine"
-import Controlled from "declarative/controlled"
-import {PID} from "declarative/controllers"
+import Control from "declarative/controlled"
+import {spring} from "declarative/controllers"
 
 (function () {
 
@@ -21,7 +21,7 @@ import {PID} from "declarative/controllers"
             this.activeController = null
             this.nextFrame = null
             this.convergence = null
-            this.convergenceThreshold = null
+            this.convergenceThreshold = 1e-6
             this.paused = false
 
             // Keep track of the state that we want our object to be in
@@ -34,7 +34,7 @@ import {PID} from "declarative/controllers"
 
                 // A target should have the format
                 //
-                // methodName (attr, style, cx, cy, ...) : {
+                // methodName (attr_fill style_width, cx, cy, ...) : {
                 //      inputs: [
                 //          Controlled OR value
                 //      ]
@@ -55,7 +55,7 @@ import {PID} from "declarative/controllers"
                         1, // scaleX or d
                         1, // scaleY or e
                         0, // shear or f
-                    ].map(value=> new Controlled(value)),
+                    ].map(value=> Control(value)),
                     modifier: currentInputs=> {
                         if (this.useAffine) {
                             let affineParameters
@@ -111,6 +111,7 @@ import {PID} from "declarative/controllers"
                 if (this.paused) return
                 if (!this.nextFrame)
                     this.step()
+                return this
             }
 
         ,   step: function () {
@@ -120,15 +121,18 @@ import {PID} from "declarative/controllers"
 
                 // Loop through all of the targets and update them based on
                 // the controllers input instruction
+                let convergence = 0
+                let controller = this.activeController
                 for (let target of this.targets) {
 
                     // Loop through all of the controllers and update them
                     let inputValues = []
                     for (let parameter of target.inputs) {
-                        if (parameter instanceof Controlled) {
+                        if (parameter.step) {
 
-                            // TODO: Use the actual time instead of the fake 16...
-                            parameter.step(this.activeController, 16)
+                            // TODO: Use the actual time instead of the fake 16
+                            // Also account for the current speed
+                            convergence += parameter.step(controller, 16e-3)
                             let newValue = parameter.value()
                             inputValues.push(newValue)
 
@@ -145,15 +149,14 @@ import {PID} from "declarative/controllers"
                     }
 
                     // Call the correct method on the target object
-                    this.element[target.method](...modified)
+                    let methodName = target.method.split("_")[0]
+                    this.element[methodName](...modified)
                 }
 
                 // Get the next animation frame to keep the simulation going
-                // TODO: Detect when we have converged and stop! We converge
-                // when our error, velocity and acceleration is close to zero
-                // for all of our targets. Have a maxError variable that
-                // needs to be below a threshold.
-                this.nextFrame = requestAnimationFrame(this.step.bind(this))
+                if (convergence > this.convergenceThreshold)
+                    this.nextFrame = requestAnimationFrame(this.step.bind(this))
+                else this.nextFrame = null
                 return this
             }
 
@@ -162,12 +165,13 @@ import {PID} from "declarative/controllers"
                 return this
             }
 
-        ,   controller: function (newController= PID()) {
+        ,   controller: function (newController= spring()) {
                 this.activeController = newController
                 return this
             }
 
         ,   affine: function (useAffine=true) {
+
                 // If useAffine is true, transformations will occur in an
                 // affine manner, otherwise, we will directly morph abcdef
                 this.useAffine = useAffine
@@ -194,56 +198,38 @@ import {PID} from "declarative/controllers"
          */
 
         ,   _addTarget: function (
-                method, targets=[], initials=[], modifier
+                method, targets=[], initials=()=>[], modifier
             ) {
-                // If the target already exists, we just update the targets
-                // for every input provided (the formats have to match)
+
+                // If the target doesn't exist, we have to check if the input
+                // is possible to control and if so, assign it a controller
                 let existingTarget = this.targets.get(method)
-                if (existingTarget) {
-
-                    for (let i = 0 ; i < targets.length; i++) {
-
-                        // Get the particular to argument to retarget
-                        let methodArgument = existingTarget.inputs[i]
-
-                        // If the argument is controlled, give it a new target
-                        if (methodArgument instanceof Controlled) {
-                            let newTarget = targets[i]
-                            methodArgument.target(newTarget)
-
-                        // Otherwise, just use the value provided directly
-                        } else {
-                            methodArgument.target = targets[i]
-                        }
-                    }
-
-                // If it doesn't exist, we have to check if the input is
-                // possible to control and if so, assign it a controller
-                } else {
+                if (existingTarget == undefined) {
 
                     // Loop through all of the inputs, and if they are numeric
                     // then we have to make them into controllers
                     let argumentsControlled = []
+                    let init = initials()
                     for (let i = 0 ; i < targets.length ; i++) {
-
-                        // Get the current target and start value
-                        let [target, initial] = [targets[i], initials[i]]
-
-                        // TODO: Allow for colors and arrays
-                        if (isFinite(targets[i])) {
-                            let controlled = new Controlled(target, initial)
-                            argumentsControlled.push(controlled)
-                        } else {
-                            argumentsControlled.push(target)
-                        }
+                        let start = init[i] === undefined ? targets[i] : init[i]
+                        let controlled = Control(start)
+                        argumentsControlled.push(controlled)
                     }
 
                     // Construct the target for this method
-                    this.targets.push ({
+                    existingTarget = {
                         method: method,
                         inputs: argumentsControlled,
                         modifier: modifier,
-                    })
+                    }
+                    this.targets.push (existingTarget)
+                }
+
+                // Set the new targets provided directly
+                for (let i = 0 ; i < targets.length; i++) {
+                    let methodArgument = existingTarget.inputs[i]
+                    let newTarget = targets[i]
+                    methodArgument.target(newTarget)
                 }
 
                 // Continue the animation in case it stopped
@@ -281,10 +267,39 @@ import {PID} from "declarative/controllers"
         // Properties
         ,   attr: function (key, value) {
 
+                if (typeof key == 'object') {
+
+                    // We are dealing with an object, so loop over it
+                    let obj = key
+
+                    // Iterate over the keys and values and run them
+                    for (let key in obj) if (obj.hasOwnProperty(key)) {
+                        this.attr(key, obj[key])
+                    }
+
+                } else {
+                    let startValue = ()=> [key, this.element.attr(key)]
+                    this._addTarget(`attr_${key}`, [key, value], startValue)
+                }
+                return this
             }
 
         ,   style: function (key, value) {
 
+                if (typeof key == "object") {
+
+                    // We are dealing with an object, so loop over it
+                    let obj = key
+
+                    // Iterate over the keys and values and run them
+                    for (let key in obj) if (obj.hasOwnProperty(key)) {
+                        this.attr(key, obj[key])
+                    }
+
+                } else {
+
+                }
+                return this
             }
 
         // Basic movements
@@ -298,14 +313,14 @@ import {PID} from "declarative/controllers"
 
                     // Get the current position for this object
                     let control = this.targets.get("x")
-                    let currentX = control
+                    let currentX = ()=> control
                         ? control.inputs[0].target()
                         : this.element.x()
 
                     // Add an x target directly
                     this._addTarget("x",
                         [relative ? x + currentX : x],
-                        [currentX])
+                        currentX)
                 }
                 return this
             }
@@ -320,14 +335,14 @@ import {PID} from "declarative/controllers"
 
                     // Get the current position for this object
                     let control = this.targets.get("y")
-                    let currentY = control
+                    let currentY = ()=> control
                         ? control.inputs[0].target()
                         : this.element.x()
 
                     // Add a y target directly
                     this._addTarget("y",
                         [relative ? y + currentY : y],
-                        [currentY])
+                        currentY)
                 }
                 return this
             }
@@ -384,6 +399,28 @@ import {PID} from "declarative/controllers"
 
             }
         }
+
+        // Syntax Sugar
+
+        ,   fill: function (item) {
+                // If we have an object, set the individual attributes
+            }
+
+        ,   stroke: function (item) {
+                // If we have an object, set the individual attributes
+            }
+
+        ,   size: function (sx, sy) {
+
+            }
+
+        ,   width: function (item) {
+
+            }
+
+        ,   height: function (item) {
+
+            }
     })
 
 }).call(this)
