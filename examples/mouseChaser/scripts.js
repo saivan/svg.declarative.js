@@ -19,8 +19,10 @@ canvas.mousemove(e=> {
 
     // Move the follower with the declarative center
     follower.declarative()
+        .delay(200)
         .center(x, y)
         .attr("fill-opacity", 0.3 * Math.sin((x + y) / 100) + 0.7)
+        .delay(1000)
         .attr("fill", [color(x + y, 0), color(x + y, 2/3), color(x + y, 4/3)])
 })
 

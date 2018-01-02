@@ -22,6 +22,7 @@ import {spring} from "declarative/controllers"
             this.nextFrame = null
             this.convergence = null
             this.convergenceThreshold = 1e-6
+            this.nextTick = null
             this.paused = false
 
             // Keep track of the state that we want our object to be in
@@ -90,6 +91,8 @@ import {spring} from "declarative/controllers"
                     .controller(controller)
             }
 
+            // Set the time for the next tick
+            this.chaser.nextTick = +new Date
             return this.chaser
         }
     }
@@ -193,6 +196,11 @@ import {spring} from "declarative/controllers"
                 return this
             }
 
+        ,   delay: function (time) {
+                this.nextTick += time
+                return this
+            }
+
         /**
          * Methods that modify the current targets
          */
@@ -201,39 +209,46 @@ import {spring} from "declarative/controllers"
                 method, targets=[], initials=()=>[], modifier
             ) {
 
-                // If the target doesn't exist, we have to check if the input
-                // is possible to control and if so, assign it a controller
-                let existingTarget = this.targets.get(method)
-                if (existingTarget == undefined) {
+                let waitFor = Math.max(0, this.nextTick - (+ new Date))
+                setTimeout(()=> {
 
-                    // Loop through all of the inputs, and if they are numeric
-                    // then we have to make them into controllers
-                    let argumentsControlled = []
-                    let init = initials()
-                    for (let i = 0 ; i < targets.length ; i++) {
-                        let start = init[i] === undefined ? targets[i] : init[i]
-                        let controlled = Control(start)
-                        argumentsControlled.push(controlled)
+                    // If the target doesn't exist, we have to check if it
+                    // is possible to control and if so, assign it a controller
+                    let existingTarget = this.targets.get(method)
+                    if (existingTarget == undefined) {
+
+                        // Loop through all of the inputs, and if they are
+                        // numeric then we have to make them into controllers
+                        let argumentsControlled = []
+                        let init = initials()
+                        for (let i = 0 ; i < targets.length ; i++) {
+                            let start = init[i] === undefined
+                                ? targets[i]
+                                : init[i]
+                            let controlled = Control(start)
+                            argumentsControlled.push(controlled)
+                        }
+
+                        // Construct the target for this method
+                        existingTarget = {
+                            method: method,
+                            inputs: argumentsControlled,
+                            modifier: modifier,
+                        }
+                        this.targets.push (existingTarget)
                     }
 
-                    // Construct the target for this method
-                    existingTarget = {
-                        method: method,
-                        inputs: argumentsControlled,
-                        modifier: modifier,
+                    // Set the new targets provided directly
+                    for (let i = 0 ; i < targets.length; i++) {
+                        let methodArgument = existingTarget.inputs[i]
+                        let newTarget = targets[i]
+                        methodArgument.target(newTarget)
                     }
-                    this.targets.push (existingTarget)
-                }
 
-                // Set the new targets provided directly
-                for (let i = 0 ; i < targets.length; i++) {
-                    let methodArgument = existingTarget.inputs[i]
-                    let newTarget = targets[i]
-                    methodArgument.target(newTarget)
-                }
+                    // Continue the animation in case it stopped
+                    this.continue()
 
-                // Continue the animation in case it stopped
-                this.continue()
+                }, waitFor)
             }
 
         ,   _addTransform: function (transform, relative) {
