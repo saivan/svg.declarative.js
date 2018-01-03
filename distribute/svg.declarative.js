@@ -60,14 +60,1138 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 0);
+/******/ 	return __webpack_require__(__webpack_require__.s = 1);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ (function(module, exports) {
+/***/ (function(module, exports, __webpack_require__) {
 
-throw new Error("Module build failed: SyntaxError: Unexpected token (44:16)\n\n\u001b[0m \u001b[90m 42 | \u001b[39m                \u001b[90m// uncontrolled arguments are passed directly\u001b[39m\n \u001b[90m 43 | \u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 44 | \u001b[39m                { \u001b[90m// Transformations\u001b[39m\n \u001b[90m    | \u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 45 | \u001b[39m                    method\u001b[33m:\u001b[39m \u001b[32m\"transform\"\u001b[39m\u001b[33m,\u001b[39m\n \u001b[90m 46 | \u001b[39m                    inputs\u001b[33m:\u001b[39m [\n \u001b[90m 47 | \u001b[39m                        \u001b[35m0\u001b[39m \u001b[90m// TranslateX or a\u001b[39m\u001b[0m\n");
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+exports.decompose = decompose;
+exports.compose = compose;
+
+function mag(a, b) {
+    return Math.sqrt(a * a + b * b);
+}
+
+function unitCircle(a, b) {
+    var thetaRad = Math.atan2(b, a);
+    var thetaDeg = thetaRad * 180 / Math.PI;
+    var cos = Math.cos(thetaRad);
+    var sin = Math.sin(thetaRad);
+    return [thetaDeg, cos, sin];
+}
+
+function decompose(matrix, cx, cy) {
+
+    // Get the paramaters of the current matrix
+    var a = matrix.a,
+        b = matrix.b,
+        c = matrix.c,
+        d = matrix.d,
+        e = matrix.e,
+        f = matrix.f;
+
+    // Construct the parameters
+
+    var _unitCircle = unitCircle(a, b),
+        _unitCircle2 = _slicedToArray(_unitCircle, 3),
+        theta = _unitCircle2[0],
+        ct = _unitCircle2[1],
+        st = _unitCircle2[2];
+
+    var signX = Math.sign(a * ct + b * st);
+    var sx = signX * mag(a, b);
+    var lam = (st * d + ct * c) / (ct * a + st * b);
+    var signY = Math.sign(-c * st + d * ct);
+    var sy = mag(lam * a - c, d - lam * b);
+    var tx = e - cx + cx * ct * sx + cy * (lam * ct * sx - st * sy);
+    var ty = f - cy + cx * st * sx + cy * (lam * st * sx + ct * sy);
+
+    // Package and return the parameters
+    var parameters = {
+        translateX: tx,
+        translateY: ty,
+        theta: theta,
+        scaleX: sx,
+        scaleY: sy,
+        shear: lam
+    };
+    return parameters;
+}
+
+function compose(tx, ty, theta, sx, sy, lam, cx, cy) {
+
+    // Calculate the trigonometric values
+    var _ref = [Math.cos(theta * Math.PI / 180), Math.sin(theta * Math.PI / 180)],
+        ct = _ref[0],
+        st = _ref[1];
+
+    // Calculate the matrix components directly
+
+    var a = sx * ct;
+    var b = sx * st;
+    var c = lam * sx * ct - sy * st;
+    var d = lam * sx * st + sy * ct;
+    var e = -sx * ct * (cx + cy * lam) + sy * st * cy + tx + cx;
+    var f = -sx * st * (cx + cy * lam) - sy * ct * cy + ty + cy;
+
+    // Construct a new matrix and return it
+    var matrix = new SVG.Matrix([a, b, c, d, e, f]);
+    return matrix;
+}
+
+/***/ }),
+/* 1 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+var _affine = __webpack_require__(0);
+
+var _controlled = __webpack_require__(2);
+
+var _controlled2 = _interopRequireDefault(_controlled);
+
+var _controllers = __webpack_require__(3);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
+(function () {
+
+    SVG.declarative = SVG.invent({
+
+        parent: SVG.Element,
+
+        create: function create(element) {
+
+            // Store the element
+            this.element = element;
+
+            // The controller is in charge of moving our object towards its
+            // desired state directly.
+            this.activeController = null;
+            this.nextFrame = null;
+            this.convergence = null;
+            this.convergenceThreshold = 1e-6;
+            this.canInterrupt = true;
+            this.nextTick = null;
+            this.playSpeed = 1;
+            this.paused = false;
+
+            // Keep track of the state that we want our object to be in
+            this.useAffine = true;
+
+            var _element$bbox = element.bbox(),
+                cx = _element$bbox.cx,
+                cy = _element$bbox.cy;
+
+            this.transformTarget = element.transform().matrix;
+            this.proposedTransforms = {};
+            this._resetTransformProposal();
+            this.targets = [
+
+            // A target should have the following format. Note that
+            // modifiers are functions that take the inputs and return them
+            // in a format suitable for the method
+            //
+            // {
+            //      methodName (attr_fill style_width, cx, cy, ...)
+            //      timeout: id
+            //      modifier: function
+            //      inputs: [
+            //          any class from controlled
+            //      ]
+            // }
+            { // Transformations
+                method: "transform",
+                timeout: null,
+                inputs: [(0, _controlled2.default)(this.transformTarget, cx, cy).affine(this.useAffine)]
+            }];
+            this.targets.get = function (method) {
+                var found = this.find(function (item) {
+                    return item.method == method;
+                });
+                return found;
+            };
+
+            // Set the transformation origin for absolute transforms
+            this.toOrigin = null;
+            this.fromOrigin = null;
+            this.transformOrigin = null;
+            this.around(cx, cy);
+        },
+
+        construct: {
+
+            declarative: function declarative(controller) {
+
+                if (this.chaser) {
+
+                    if (controller) this.chaser.controller(newController);
+                } else {
+                    this.chaser = new SVG.declarative(this).controller(controller);
+                }
+
+                // Set the time for the next tick
+                this.chaser.nextTick = +new Date();
+                return this.chaser;
+            }
+        },
+
+        extend: {
+
+            /**
+             * Methods that directly modify the simulation
+             */
+
+            pause: function pause() {
+                var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
+
+                this.paused = state;
+                if (this.paused == false) this.step();
+                return this;
+            },
+
+            continue: function _continue() {
+                if (this.paused) return;
+                if (!this.nextFrame) this.step();
+                return this;
+            },
+
+            overwrite: function overwrite() {
+                var should = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
+
+                this.canInterrupt = should;
+                return this;
+            },
+
+            step: function step(time) {
+
+                // If we are paused, just exit
+                if (this.paused) return;
+
+                // Get the time delta
+                var dt = this.playSpeed * (time - this.lastTime || 16) / 1000;
+                this.lastTime = time;
+
+                // Loop through all of the targets and update them based on
+                // the controllers input instruction
+                var convergence = 0;
+                var controller = this.activeController;
+                var _iteratorNormalCompletion = true;
+                var _didIteratorError = false;
+                var _iteratorError = undefined;
+
+                try {
+                    for (var _iterator = this.targets[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                        var _element;
+
+                        var target = _step.value;
+
+
+                        // Loop through all of the controllers and update them
+                        var inputValues = [];
+                        var _iteratorNormalCompletion2 = true;
+                        var _didIteratorError2 = false;
+                        var _iteratorError2 = undefined;
+
+                        try {
+                            for (var _iterator2 = target.inputs[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+                                var parameter = _step2.value;
+
+                                convergence += parameter.step(controller, dt);
+                                var newValue = parameter.value();
+                                inputValues.push(newValue);
+                            }
+
+                            // Call the modifier to get the parameters in the right
+                            // format for the method
+                        } catch (err) {
+                            _didIteratorError2 = true;
+                            _iteratorError2 = err;
+                        } finally {
+                            try {
+                                if (!_iteratorNormalCompletion2 && _iterator2.return) {
+                                    _iterator2.return();
+                                }
+                            } finally {
+                                if (_didIteratorError2) {
+                                    throw _iteratorError2;
+                                }
+                            }
+                        }
+
+                        var modified = inputValues;
+                        if (target.modifier) {
+                            modified = target.modifier(inputValues);
+                        }
+
+                        // Call the correct method on the target object
+                        var methodName = target.method.split("_")[0];
+                        (_element = this.element)[methodName].apply(_element, _toConsumableArray(modified));
+                    }
+
+                    // Get the next animation frame to keep the simulation going
+                } catch (err) {
+                    _didIteratorError = true;
+                    _iteratorError = err;
+                } finally {
+                    try {
+                        if (!_iteratorNormalCompletion && _iterator.return) {
+                            _iterator.return();
+                        }
+                    } finally {
+                        if (_didIteratorError) {
+                            throw _iteratorError;
+                        }
+                    }
+                }
+
+                if (convergence > this.convergenceThreshold) this.nextFrame = requestAnimationFrame(this.step.bind(this));else this.nextFrame = null;
+                return this;
+            },
+
+            speed: function speed(newSpeed) {
+                this.playSpeed = newSpeed;
+                return this;
+            },
+
+            controller: function controller() {
+                var newController = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : (0, _controllers.spring)();
+
+                this.activeController = newController;
+                return this;
+            },
+
+            affine: function affine() {
+                var useAffine = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
+
+
+                // If useAffine is true, transformations will occur in an
+                // affine manner, otherwise, we will directly morph abcdef
+                this.useAffine = useAffine;
+
+                var _targets$get$inputs = _slicedToArray(this.targets.get("transform").inputs, 1),
+                    matrixC = _targets$get$inputs[0];
+
+                matrixC.affine(useAffine);
+                return this;
+            },
+
+            around: function around(ox, oy) {
+
+                // Sets the transformation origin explicitly, by default, the
+                // transform origin is around the center of the bbox
+                this.transformOrigin = [ox, oy];
+                this.fromOrigin = new SVG.Matrix([1, 0, 0, 1, ox, oy]);
+                this.toOrigin = this.fromOrigin.inverse();
+
+                // Also change the origin for the matrix controller
+
+                var _targets$get$inputs2 = _slicedToArray(this.targets.get("transform").inputs, 1),
+                    matrixC = _targets$get$inputs2[0];
+
+                matrixC.center(ox, oy);
+                return this;
+            },
+
+            threshold: function threshold(newThreshold) {
+                this.threshold = newThreshold;
+                return this;
+            },
+
+            delay: function delay(time) {
+                this.nextTick += time / this.playSpeed;
+                return this;
+            }
+
+            /**
+             * Methods that modify the current targets
+             */
+
+            , _addTarget: function _addTarget(method) {
+                var targets = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
+
+                var _this = this;
+
+                var initials = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : function () {
+                    return [];
+                };
+                var modifier = arguments[3];
+
+
+                // Work out when to continue
+                var waitFor = Math.max(0, this.nextTick - +new Date());
+                var existingTarget = this.targets.get(method);
+
+                // If the target already exists, delete its timeout
+                if (existingTarget) {
+                    if (!this.canInterrupt) clearTimeout(existingTarget.timeout);
+
+                    // If the target doesn't exist, we have to check if it
+                    // is possible to control and if so, assign it a controller
+                } else {
+
+                    // Loop through all of the inputs, and if they are
+                    // numeric then we have to make them into controllers
+                    var argumentsControlled = [];
+                    var init = initials();
+                    for (var i = 0; i < targets.length; i++) {
+                        var start = init[i] === undefined ? targets[i] : init[i];
+                        var controlled = (0, _controlled2.default)(start);
+                        argumentsControlled.push(controlled);
+                    }
+
+                    // Construct the target for this method
+                    existingTarget = {
+                        method: method,
+                        inputs: argumentsControlled,
+                        modifier: modifier
+                    };
+                    this.targets.push(existingTarget);
+                }
+
+                // Wait for the correct time then change the targets
+                existingTarget.timeout = setTimeout(function () {
+
+                    // Set the new targets provided directly
+                    for (var _i = 0; _i < targets.length; _i++) {
+                        var methodArgument = existingTarget.inputs[_i];
+                        var newTarget = targets[_i];
+                        methodArgument.target(newTarget);
+                    }
+
+                    // Continue the animation in case it stopped
+                    _this.continue();
+                }, waitFor);
+            },
+
+            _bakeTransforms: function _bakeTransforms() {
+
+                // Calculate the net matrix
+                var _proposedTransforms = this.proposedTransforms,
+                    translation = _proposedTransforms.translation,
+                    rotation = _proposedTransforms.rotation,
+                    scale = _proposedTransforms.scale,
+                    flip = _proposedTransforms.flip,
+                    skew = _proposedTransforms.skew;
+
+                this.transformTarget = translation.multiply(this.fromOrigin).multiply(rotation).multiply(scale).multiply(flip).multiply(skew).multiply(this.toOrigin);
+
+                // Add the target for the new transform
+                this._addTarget("transform", [this.transformTarget]);
+            },
+
+            _resetTransformProposal: function _resetTransformProposal() {
+
+                this.proposedTransforms = {
+                    translation: new SVG.Matrix(),
+                    rotation: new SVG.Matrix(),
+                    scale: new SVG.Matrix(),
+                    flip: new SVG.Matrix(),
+                    skew: new SVG.Matrix()
+                };
+            },
+
+            _attrStyle: function _attrStyle(key, value, type) {
+                var _this2 = this;
+
+                if ((typeof key === "undefined" ? "undefined" : _typeof(key)) == 'object') {
+
+                    // We are dealing with an object, so loop over it
+                    var obj = key;
+
+                    // Iterate over the keys and values and run them
+                    for (var _key in obj) {
+                        if (obj.hasOwnProperty(_key)) {
+                            this[type](_key, obj[_key]);
+                        }
+                    }
+                } else {
+                    var startValue = function startValue() {
+                        return [key, _this2.element[type](key)];
+                    };
+                    this._addTarget(type + "_" + key, [key, value], startValue);
+                }
+            }
+
+            // Properties
+
+            , attr: function attr(key, value) {
+                this._attrStyle(key, value, "attr");
+                return this;
+            },
+
+            style: function style(key, value) {
+                this._attrStyle(key, value, "style");
+                return this;
+            }
+
+            // Basic movements
+
+            , x: function x(_x7, relative) {
+                var _this3 = this;
+
+                if (this.element instanceof SVG.G) {
+
+                    // TODO: Deal with groups by using a transform
+
+                } else {
+
+                    // Get the current position for this object
+                    var control = this.targets.get("x");
+                    var currentX = function currentX() {
+                        return control ? control.inputs[0].target() : _this3.element.x();
+                    };
+
+                    // Add an x target directly
+                    this._addTarget("x", [relative ? _x7 + currentX() : _x7], currentX);
+                }
+                return this;
+            },
+
+            y: function y(_y, relative) {
+                var _this4 = this;
+
+                if (this.element instanceof SVG.G) {
+
+                    // TODO: Deal with groups by using a transform
+
+                } else {
+
+                    // Get the current position for this object
+                    var control = this.targets.get("y");
+                    var currentY = function currentY() {
+                        return control ? control.inputs[0].target() : _this4.element.x();
+                    };
+
+                    // Add a y target directly
+                    this._addTarget("y", [relative ? _y + currentY : _y], currentY);
+                }
+                return this;
+            },
+
+            move: function move(x, y, relative) {
+                this.x(x, relative).y(y, relative);
+                return this;
+            },
+
+            cx: function cx(x, relative) {
+
+                // Get the bounding boxes width to subtract off of the x
+                var oX = this.element.bbox().width / 2;
+                this.x(x - oX, relative);
+                return this;
+            },
+
+            cy: function cy(y, relative) {
+
+                // Get the bounding boxes width to subtract off of the x
+                var oY = this.element.bbox().height / 2;
+                this.y(y - oY, relative);
+                return this;
+            },
+
+            center: function center(x, y, relative) {
+                this.cx(x, relative).cy(y, relative);
+                return this;
+            }
+
+            // Transformations
+
+            , matrix: function matrix(_matrix) {
+                var relative = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+
+                this._resetTransformProposal();
+                this.transformTarget = relative ? this.transformTarget.multiply(_matrix) : _matrix;
+                this._addTarget("transform", [this.transformTarget]);
+                return this;
+            },
+
+            rotate: function rotate(theta) {
+                var relative = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+
+                // Calculate the rotation matrix
+                var thetaRad = Math.PI * theta / 180;
+                var _ref = [Math.cos(thetaRad), Math.sin(thetaRad)],
+                    c = _ref[0],
+                    s = _ref[1];
+
+                var rotation = new SVG.Matrix([c, s, -s, c, 0, 0]);
+
+                // We set the proposed transform and bake it if necessary,
+                // otherwise, we just apply it as a relative matrix
+                this.proposedTransforms.rotation = rotation;
+                if (relative) this.matrix(rotation, relative);else this._bakeTransforms();
+                return this;
+            },
+
+            translate: function translate(x, y) {
+                var relative = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+
+
+                // Construct the matrix
+                var translation = new SVG.Matrix([1, 0, 0, 1, x, y]);
+
+                // We set the proposed transform and bake it if necessary,
+                // otherwise, we just apply it as a relative matrix
+                this.proposedTransforms.translation = translation;
+                if (relative) this.matrix(translation, relative);else this._bakeTransforms();
+                return this;
+            },
+
+            position: function position(x, y) {
+
+                // Forcibly place the center at the x, y position given
+                var _transformOrigin = _slicedToArray(this.transformOrigin, 2),
+                    cx = _transformOrigin[0],
+                    cy = _transformOrigin[1];
+
+                this.translate(x - cx, y - cy, false);
+                return this;
+            },
+
+            scale: function scale(sx, sy) {
+                var relative = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+
+
+                // The user can provide only one scale for a proportional scale
+                if (!isFinite(sy)) {
+                    relative = sy || relative;
+                    sy = sx;
+                }
+
+                // Build the scale matrix
+                var scale = new SVG.Matrix([sx, 0, 0, sy, 0, 0]);
+
+                // We set the proposed transform and bake it if necessary,
+                // otherwise, we just apply it as a relative matrix
+                this.proposedTransforms.scale = scale;
+                if (relative) this.matrix(scale, relative);else this._bakeTransforms();
+                return this;
+            },
+
+            flip: function flip() {
+                var direction = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : "x";
+                var relative = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+
+                // Build the flip matrix
+                if (relative) {
+                    var flip = new SVG.Matrix();
+                    flip[direction == "x" ? "a" : "d"] = -1;
+                    this.matrix(scale, relative);
+                } else {
+
+                    // Flip the respective entry in the flip matrix
+                    this.proposedTransforms.flip[direction == "x" ? "a" : "d"] *= -1;
+                    this._bakeTransforms();
+                }
+                return this;
+            },
+
+            skew: function skew(lamX, lamY) {
+                var relative = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+
+
+                // The user can provide only one skew for a proportional skew
+                if (!isFinite(sy)) {
+                    relative = lamY || relative;
+                    lamY = lamX;
+                }
+
+                // Calculate the skew matrix
+                var skew = new SVG.Matrix([1, lamY, lamX, 1, 0, 0]);
+
+                // Modify the current matrix
+                this.proposedTransforms.skew = skew;
+                if (relative) this.matrix(skew, relative);else this._bakeTransforms();
+                return this;
+            }
+
+            // Syntax Sugar
+
+            , fill: function fill(item) {
+                // If we have an object, set the individual attributes
+            },
+
+            stroke: function stroke(item) {
+                // If we have an object, set the individual attributes
+            },
+
+            size: function size(sx, sy) {},
+
+            width: function width(item) {},
+
+            height: function height(item) {}
+        }
+    });
+}).call(undefined);
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+exports.default = Control;
+
+var _affine = __webpack_require__(0);
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var ConstantC = function () {
+    function ConstantC(value) {
+        _classCallCheck(this, ConstantC);
+
+        this.target(value);
+    }
+
+    _createClass(ConstantC, [{
+        key: "target",
+        value: function target(value) {
+            this.constant = value;
+        }
+    }, {
+        key: "value",
+        value: function value() {
+            return this.constant;
+        }
+    }, {
+        key: "step",
+        value: function step(controller, dt) {
+            return 0;
+        }
+    }]);
+
+    return ConstantC;
+}();
+
+var NumberC = function () {
+    function NumberC(target) {
+        _classCallCheck(this, NumberC);
+
+        this.reset(target);
+    }
+
+    _createClass(NumberC, [{
+        key: "target",
+        value: function target(newTarget) {
+            if (isFinite(newTarget)) {
+                this.currentTarget = Number(newTarget);
+                this.error = this.position - this.currentTarget;
+            }
+            return this.currentTarget;
+        }
+    }, {
+        key: "value",
+        value: function value() {
+            return this.position;
+        }
+    }, {
+        key: "step",
+        value: function step(controller, dt) {
+
+            // Use the controller to determine what the new parameters should be
+            var _controller = controller(this.error, this.velocity, this.acceleration, this.integral),
+                _controller2 = _slicedToArray(_controller, 3),
+                sNew = _controller2[0],
+                vNew = _controller2[1],
+                aNew = _controller2[2];
+
+            this.position = isFinite(sNew) ? sNew : this.position;
+            this.velocity = isFinite(vNew) ? vNew : this.velocity;
+            this.acceleration = isFinite(aNew) ? aNew : this.acceleration;
+
+            // Use Eulers method to update the velocity and the error
+            this.position += this.velocity * dt + this.acceleration * dt * dt / 2;
+            this.velocity += this.acceleration * dt;
+
+            // Use the position to calculate the new error and its integral
+            var newError = this.position - this.currentTarget;
+            this.integral += dt * (this.error + newError) / 2; // Trapezoidal rule
+            this.error = newError;
+
+            // If the controller isn't doing anything, we consider it converged
+            var convergence = Math.abs((sNew || 0) + (vNew || 0) + (aNew || 0));
+            return convergence;
+        }
+    }, {
+        key: "reset",
+        value: function reset(newValue) {
+            this.currentTarget = Number(newValue);
+            this.position = Number(newValue);
+            this.error = 0;
+            this.velocity = 0;
+            this.acceleration = 0;
+            this.integral = 0;
+        }
+    }]);
+
+    return NumberC;
+}();
+
+var MatrixC = function () {
+    function MatrixC() {
+        var matrix = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : new SVG.Matrix();
+        var cx = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
+        var cy = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+
+        _classCallCheck(this, MatrixC);
+
+        // Store all of the parameters
+        this.currentMatrix = matrix;
+        this.controllers = [new NumberC(matrix.a), new NumberC(matrix.b), new NumberC(matrix.c), new NumberC(matrix.d), new NumberC(matrix.e), new NumberC(matrix.f)];
+
+        // If we want an affine transformation, we find the parameters
+        this.cx = cx;
+        this.cy = cy;
+        this.useAffine = false; // If true, it will be set below
+    }
+
+    _createClass(MatrixC, [{
+        key: "center",
+        value: function center(cx, cy) {
+            this.cx = cx;
+            this.cy = cy;
+            return this;
+        }
+    }, {
+        key: "affine",
+        value: function affine() {
+            var useAffine = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
+
+
+            // Work out if we need to modify the targets
+            var toggled = Boolean(this.useAffine ^ useAffine);
+            this.useAffine = useAffine;
+
+            // Convert the targets to affine or vice versa
+            if (toggled) this.target(this.currentMatrix, true);
+            return this;
+        }
+    }, {
+        key: "target",
+        value: function target(matrix) {
+            var reset = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+
+            // Extract the parameters
+            var v = null;
+            if (this.useAffine) {
+
+                // Decompose the matrix into its parameters
+                var _decompose = (0, _affine.decompose)(matrix, this.cx, this.cy),
+                    translateX = _decompose.translateX,
+                    translateY = _decompose.translateY,
+                    theta = _decompose.theta,
+                    scaleX = _decompose.scaleX,
+                    scaleY = _decompose.scaleY,
+                    shear = _decompose.shear;
+
+                v = [translateX, translateY, theta, scaleX, scaleY, shear];
+            } else {
+                v = [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f];
+            }
+
+            // Set the new target for each controller
+            this.controllers.forEach(function (c, i) {
+                return c[reset ? "reset" : "target"](v[i]);
+            });
+        }
+    }, {
+        key: "value",
+        value: function value() {
+            return this.currentMatrix;
+        }
+    }, {
+        key: "step",
+        value: function step(controller, dt) {
+
+            // Step through all of the numbers, updating them
+            var convergence = 0;
+            var _iteratorNormalCompletion = true;
+            var _didIteratorError = false;
+            var _iteratorError = undefined;
+
+            try {
+                for (var _iterator = this.controllers[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                    var number = _step.value;
+
+                    convergence += number.step(controller, dt);
+                }
+
+                // Extract the current matrix from this
+            } catch (err) {
+                _didIteratorError = true;
+                _iteratorError = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion && _iterator.return) {
+                        _iterator.return();
+                    }
+                } finally {
+                    if (_didIteratorError) {
+                        throw _iteratorError;
+                    }
+                }
+            }
+
+            if (this.useAffine) {
+
+                // Get the affine parameters and add on the center point
+                var parameters = this.controllers.map(function (c) {
+                    return c.value();
+                }).concat([this.cx, this.cy]);
+
+                // Compose the affine parameters into a matrix
+                this.currentMatrix = _affine.compose.apply(undefined, _toConsumableArray(parameters));
+            } else {
+
+                // If we are not using affine transforms, just return directly
+                var values = this.controllers.map(function (c) {
+                    return c.value();
+                });
+                this.currentMatrix = new SVG.Matrix(values);
+            }
+
+            // Return the convergence error
+            return convergence;
+        }
+    }]);
+
+    return MatrixC;
+}();
+
+var ArrayC = function () {
+    function ArrayC(string) {
+        _classCallCheck(this, ArrayC);
+    }
+
+    _createClass(ArrayC, [{
+        key: "target",
+        value: function target(colorString) {}
+    }, {
+        key: "value",
+        value: function value() {}
+    }, {
+        key: "step",
+        value: function step(controller, dt) {}
+    }], [{
+        key: "matches",
+        value: function matches(item) {}
+    }]);
+
+    return ArrayC;
+}();
+
+// TODO: Allow svg d elements to animate by picking out their numbers and
+// replacing them all
+
+
+var numbers = /[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/i;
+
+var StringC = function () {
+    function StringC() {
+        _classCallCheck(this, StringC);
+    }
+
+    _createClass(StringC, [{
+        key: "construct",
+        value: function construct(string) {
+
+            //
+            this.values = [];
+            this.template = string.replace(numbers, function (match) {
+
+                // Parse the match as a number
+                var value = window.Number(match);
+                var controller = new Number();
+                return "__v__";
+            });
+        }
+    }, {
+        key: "target",
+        value: function target(colorString) {}
+    }, {
+        key: "value",
+        value: function value() {}
+    }, {
+        key: "step",
+        value: function step(controller, dt) {}
+    }], [{
+        key: "matches",
+        value: function matches(item) {}
+    }]);
+
+    return StringC;
+}();
+
+var ColorC = function () {
+    function ColorC(string) {
+        _classCallCheck(this, ColorC);
+
+        this.targets = [new NumberC(0), new NumberC(0), new NumberC(0)];
+        this.target(string);
+    }
+
+    _createClass(ColorC, [{
+        key: "target",
+        value: function target(color) {
+
+            // Get the new values from the color
+            var values = null;
+            if (color instanceof Array) {
+                values = color.map(function (v) {
+                    return parseInt(v);
+                });
+            } else if (typeof color == "string") {
+
+                var hexMatch = color.match(SVG.regex.hex);
+                var rgbMatch = color.match(SVG.regex.rgb);
+                values = hexMatch ? hexMatch.splice(1).map(function (v) {
+                    return parseInt(v, 16);
+                }) : rgbMatch.splice(1).map(function (v) {
+                    return parseInt(v);
+                });
+            } else return;
+
+            // Set the new targets
+            this.targets.forEach(function (target, i) {
+                return target.target(values[i]);
+            });
+
+            // Return the values for use
+            return values;
+        }
+    }, {
+        key: "value",
+        value: function value() {
+
+            // Get the numbers and bound them to an int between [0, 255]
+            var values = this.targets.map(function (v) {
+                var value = Math.floor(v.value());
+                value = value < 0 ? 0 : value > 255 ? 255 : value;
+                return value;
+            });
+            var valueString = values.join(", ");
+            var rgbString = "rgb(" + valueString + ")";
+            return rgbString;
+        }
+    }, {
+        key: "step",
+        value: function step(controller, dt) {
+            var convergence = 0;
+            var _iteratorNormalCompletion2 = true;
+            var _didIteratorError2 = false;
+            var _iteratorError2 = undefined;
+
+            try {
+                for (var _iterator2 = this.targets[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+                    var target = _step2.value;
+
+                    convergence += target.step(controller, dt);
+                }
+            } catch (err) {
+                _didIteratorError2 = true;
+                _iteratorError2 = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion2 && _iterator2.return) {
+                        _iterator2.return();
+                    }
+                } finally {
+                    if (_didIteratorError2) {
+                        throw _iteratorError2;
+                    }
+                }
+            }
+
+            return convergence;
+        }
+    }], [{
+        key: "matches",
+        value: function matches(item) {
+            if (typeof item !== "string") return false;
+            var isHex = SVG.regex.isHex.test(item);
+            var isRgb = SVG.regex.isRgb.test(item);
+            return isRgb || isHex;
+        }
+    }]);
+
+    return ColorC;
+}();
+
+function Control(value) {
+
+    // If we have any of the correct types, then we should control them
+    if (value instanceof SVG.Matrix) return new (Function.prototype.bind.apply(MatrixC, [null].concat(Array.prototype.slice.call(arguments))))();else if (ColorC.matches(value)) return new (Function.prototype.bind.apply(ColorC, [null].concat(Array.prototype.slice.call(arguments))))();else if (isFinite(value)) return new (Function.prototype.bind.apply(NumberC, [null].concat(Array.prototype.slice.call(arguments))))();else return new (Function.prototype.bind.apply(ConstantC, [null].concat(Array.prototype.slice.call(arguments))))();
+}
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.spring = spring;
+function spring() {
+    var _ref = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+        _ref$settleTime = _ref.settleTime,
+        settleTime = _ref$settleTime === undefined ? 500 : _ref$settleTime,
+        _ref$overshoot = _ref.overshoot,
+        overshoot = _ref$overshoot === undefined ? 15 : _ref$overshoot;
+
+    // Calculate the PID natural response
+    var eps = 1e-10;
+    var os = overshoot / 100 + eps;
+    var zeta = -Math.log(os) / Math.sqrt(Math.pow(Math.PI, 2) + Math.pow(Math.log(os), 2));
+    var wn = 4 / (zeta * settleTime / 1000);
+
+    // Calculate the Spring values
+    var D = 2 * zeta * wn;
+    var K = wn * wn;
+
+    // Return the acceleration required
+    return function (error, velocity, acceleration, integral) {
+        var control = -D * velocity - K * error;
+        return [,, control];
+    };
+}
 
 /***/ })
 /******/ ]);

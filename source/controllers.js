@@ -1,14 +1,14 @@
 
 export function spring ({
-    settlingTime=0.5,
-    overshoot=0.15,
+    settleTime=500,
+    overshoot=15,
 }={}) {
 
     // Calculate the PID natural response
     let eps = 1e-10
-    let os = overshoot + eps
+    let os = overshoot / 100 + eps
     let zeta = - Math.log(os) / Math.sqrt(Math.PI ** 2 + Math.log(os) ** 2)
-    let wn = 4 / (zeta * settlingTime)
+    let wn = 4 / (zeta * settleTime / 1000)
 
     // Calculate the Spring values
     let D = 2 * zeta * wn

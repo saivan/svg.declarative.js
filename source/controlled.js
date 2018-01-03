@@ -1,4 +1,7 @@
 
+import {compose, decompose} from "declarative/affine"
+
+
 class ConstantC {
     constructor (value) {
         this.target(value)
@@ -21,17 +24,12 @@ class ConstantC {
 class NumberC {
 
     constructor (target) {
-        this.currentTarget = target
-        this.position = target
-        this.error = target
-        this.velocity = 0
-        this.acceleration = 0
-        this.integral = 0
+        this.reset(target)
     }
 
     target (newTarget) {
         if (isFinite(newTarget)) {
-            this.currentTarget = newTarget
+            this.currentTarget = Number(newTarget)
             this.error = this.position - this.currentTarget
         }
         return this.currentTarget
@@ -63,23 +61,105 @@ class NumberC {
         let convergence = Math.abs((sNew || 0) + (vNew || 0) + (aNew || 0))
         return convergence
     }
+
+    reset (newValue) {
+        this.currentTarget = Number(newValue)
+        this.position = Number(newValue)
+        this.error = 0
+        this.velocity = 0
+        this.acceleration = 0
+        this.integral = 0
+    }
 }
 
 
 class MatrixC {
-    constructor (string) {
+
+    constructor (matrix= new SVG.Matrix(), cx= 0, cy= 0) {
+
+        // Store all of the parameters
+        this.currentMatrix = matrix
+        this.controllers = [
+            new NumberC(matrix.a), new NumberC(matrix.b),
+            new NumberC(matrix.c), new NumberC(matrix.d),
+            new NumberC(matrix.e), new NumberC(matrix.f)
+        ]
+
+        // If we want an affine transformation, we find the parameters
+        this.cx = cx
+        this.cy = cy
+        this.useAffine = false // If true, it will be set below
     }
 
-    target (colorString) {
+    center (cx, cy) {
+        this.cx = cx
+        this.cy = cy
+        return this
+    }
+
+    affine (useAffine=true) {
+
+        // Work out if we need to modify the targets
+        let toggled = Boolean(this.useAffine ^ useAffine)
+        this.useAffine = useAffine
+
+        // Convert the targets to affine or vice versa
+        if (toggled) this.target(this.currentMatrix, true)
+        return this
+    }
+
+    target (matrix, reset=false) {
+
+        // Extract the parameters
+        let v = null
+        if (this.useAffine) {
+
+            // Decompose the matrix into its parameters
+            let {
+                translateX, translateY, theta, scaleX, scaleY, shear
+            } = decompose(matrix, this.cx, this.cy)
+            v = [translateX, translateY, theta, scaleX, scaleY, shear]
+
+        } else {
+            v = [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f]
+        }
+
+        // Set the new target for each controller
+        this.controllers.forEach((c, i)=> c[reset ? "reset" : "target"](v[i]))
     }
 
     value () {
+        return this.currentMatrix
     }
 
     step (controller, dt) {
-    }
 
-    static matches (item) {
+        // Step through all of the numbers, updating them
+        let convergence = 0
+        for (let number of this.controllers) {
+            convergence += number.step(controller, dt)
+        }
+
+        // Extract the current matrix from this
+        if (this.useAffine) {
+
+            // Get the affine parameters and add on the center point
+            let parameters = this.controllers
+                .map(c=> c.value())
+                .concat([this.cx, this.cy])
+
+            // Compose the affine parameters into a matrix
+            this.currentMatrix = compose(...parameters)
+
+        } else {
+
+            // If we are not using affine transforms, just return directly
+            let values = this.controllers.map(c=> c.value())
+            this.currentMatrix = new SVG.Matrix(values)
+        }
+
+        // Return the convergence error
+        return convergence
     }
 }
 
@@ -103,6 +183,8 @@ class ArrayC {
 }
 
 
+// TODO: Allow svg d elements to animate by picking out their numbers and
+// replacing them all
 let numbers = /[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/i
 class StringC {
 
@@ -198,9 +280,11 @@ class ColorC {
 export default function Control (value) {
 
     // If we have any of the correct types, then we should control them
-    if (ColorC.matches(value))
-        return new ColorC(value)
+    if (value instanceof SVG.Matrix)
+        return new MatrixC(...arguments)
+    else if (ColorC.matches(value))
+        return new ColorC(...arguments)
     else if (isFinite(value))
-        return new NumberC(value)
-    else return new ConstantC(value)
+        return new NumberC(...arguments)
+    else return new ConstantC(...arguments)
 }

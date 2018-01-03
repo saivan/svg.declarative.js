@@ -5,8 +5,6 @@ import {spring} from "declarative/controllers"
 
 (function () {
 
-    let identity = new SVG.Matrix()
-
     SVG.declarative = SVG.invent({
 
         parent: SVG.Element
@@ -22,58 +20,50 @@ import {spring} from "declarative/controllers"
             this.nextFrame = null
             this.convergence = null
             this.convergenceThreshold = 1e-6
+            this.canInterrupt = true
             this.nextTick = null
+            this.playSpeed = 1
             this.paused = false
 
             // Keep track of the state that we want our object to be in
-            let {cx, cy} = element.bbox()
-            this.transformOrigin = [cx, cy]
             this.useAffine = true
+            let {cx, cy} = element.bbox()
             this.transformTarget = element.transform().matrix
-            this.proposedTransforms = this._resetProposedTransforms()
+            this.proposedTransforms = {}
+            this._resetTransformProposal()
             this.targets = [
 
-                // A target should have the format
+                // A target should have the following format. Note that
+                // modifiers are functions that take the inputs and return them
+                // in a format suitable for the method
                 //
-                // methodName (attr_fill style_width, cx, cy, ...) : {
-                //      inputs: [
-                //          Controlled OR value
-                //      ]
+                // {
+                //      methodName (attr_fill style_width, cx, cy, ...)
+                //      timeout: id
                 //      modifier: function
+                //      inputs: [
+                //          any class from controlled
+                //      ]
                 // }
-                //
-                // Controlled arguments should be controlled, whereas
-                // uncontrolled arguments are passed directly. The modifier
-                // is in charge of modifying the internal representation
-                // before it is passed to the corresponding method for action.
-
                 { // Transformations
                     method: "transform",
+                    timeout: null,
                     inputs: [
-                        0, // TranslateX or a
-                        0, // TranslateY or b
-                        0, // theta or c
-                        1, // scaleX or d
-                        1, // scaleY or e
-                        0, // shear or f
-                    ].map(value=> Control(value)),
-                    modifier: currentInputs=> {
-                        if (this.useAffine) {
-                            let affineParameters
-                                = currentInputs.concat(this.transformOrigin)
-                            let matrix = compose(...affineParameters)
-                            return matrix
-                        } else {
-                            let matrix = new SVG.Matrix(currentInputs)
-                            return matrix
-                        }
-                    }
+                        Control(this.transformTarget, cx, cy)
+                            .affine(this.useAffine)
+                    ],
                 },
             ]
             this.targets.get = function (method) {
                 let found = this.find(item=> item.method == method)
                 return found
             }
+
+            // Set the transformation origin for absolute transforms
+            this.toOrigin = null
+            this.fromOrigin = null
+            this.transformOrigin = null
+            this.around(cx, cy)
         }
 
     ,   construct: {
@@ -117,10 +107,19 @@ import {spring} from "declarative/controllers"
                 return this
             }
 
-        ,   step: function () {
+        ,   overwrite: function (should=true) {
+                this.canInterrupt = should
+                return this
+            }
+
+        ,   step: function (time) {
 
                 // If we are paused, just exit
                 if (this.paused) return
+
+                // Get the time delta
+                let dt = this.playSpeed * (time - this.lastTime || 16) / 1000
+                this.lastTime = time
 
                 // Loop through all of the targets and update them based on
                 // the controllers input instruction
@@ -131,17 +130,9 @@ import {spring} from "declarative/controllers"
                     // Loop through all of the controllers and update them
                     let inputValues = []
                     for (let parameter of target.inputs) {
-                        if (parameter.step) {
-
-                            // TODO: Use the actual time instead of the fake 16
-                            // Also account for the current speed
-                            convergence += parameter.step(controller, 16e-3)
-                            let newValue = parameter.value()
-                            inputValues.push(newValue)
-
-                        } else {
-                            inputValues.push(parameter)
-                        }
+                        convergence += parameter.step(controller, dt)
+                        let newValue = parameter.value()
+                        inputValues.push(newValue)
                     }
 
                     // Call the modifier to get the parameters in the right
@@ -164,7 +155,7 @@ import {spring} from "declarative/controllers"
             }
 
         ,   speed: function (newSpeed) {
-                this.speed = newSpeed
+                this.playSpeed = newSpeed
                 return this
             }
 
@@ -178,8 +169,8 @@ import {spring} from "declarative/controllers"
                 // If useAffine is true, transformations will occur in an
                 // affine manner, otherwise, we will directly morph abcdef
                 this.useAffine = useAffine
-
-                // TODO: Convert the targets back and forth
+                let [matrixC] = this.targets.get("transform").inputs
+                matrixC.affine(useAffine)
                 return this
             }
 
@@ -188,6 +179,12 @@ import {spring} from "declarative/controllers"
             // Sets the transformation origin explicitly, by default, the
             // transform origin is around the center of the bbox
             this.transformOrigin = [ox, oy]
+            this.fromOrigin = new SVG.Matrix([1, 0, 0, 1, ox, oy])
+            this.toOrigin = this.fromOrigin.inverse()
+
+            // Also change the origin for the matrix controller
+            let [matrixC] = this.targets.get("transform").inputs
+            matrixC.center(ox, oy)
             return this
         }
 
@@ -197,7 +194,7 @@ import {spring} from "declarative/controllers"
             }
 
         ,   delay: function (time) {
-                this.nextTick += time
+                this.nextTick += time / this.playSpeed
                 return this
             }
 
@@ -209,34 +206,42 @@ import {spring} from "declarative/controllers"
                 method, targets=[], initials=()=>[], modifier
             ) {
 
+                // Work out when to continue
                 let waitFor = Math.max(0, this.nextTick - (+ new Date))
-                setTimeout(()=> {
+                let existingTarget = this.targets.get(method)
 
-                    // If the target doesn't exist, we have to check if it
-                    // is possible to control and if so, assign it a controller
-                    let existingTarget = this.targets.get(method)
-                    if (existingTarget == undefined) {
+                // If the target already exists, delete its timeout
+                if (existingTarget) {
+                    if (!this.canInterrupt)
+                        clearTimeout(existingTarget.timeout)
 
-                        // Loop through all of the inputs, and if they are
-                        // numeric then we have to make them into controllers
-                        let argumentsControlled = []
-                        let init = initials()
-                        for (let i = 0 ; i < targets.length ; i++) {
-                            let start = init[i] === undefined
-                                ? targets[i]
-                                : init[i]
-                            let controlled = Control(start)
-                            argumentsControlled.push(controlled)
-                        }
+                // If the target doesn't exist, we have to check if it
+                // is possible to control and if so, assign it a controller
+                } else {
 
-                        // Construct the target for this method
-                        existingTarget = {
-                            method: method,
-                            inputs: argumentsControlled,
-                            modifier: modifier,
-                        }
-                        this.targets.push (existingTarget)
+                    // Loop through all of the inputs, and if they are
+                    // numeric then we have to make them into controllers
+                    let argumentsControlled = []
+                    let init = initials()
+                    for (let i = 0 ; i < targets.length ; i++) {
+                        let start = init[i] === undefined
+                            ? targets[i]
+                            : init[i]
+                        let controlled = Control(start)
+                        argumentsControlled.push(controlled)
                     }
+
+                    // Construct the target for this method
+                    existingTarget = {
+                        method: method,
+                        inputs: argumentsControlled,
+                        modifier: modifier,
+                    }
+                    this.targets.push (existingTarget)
+                }
+
+                // Wait for the correct time then change the targets
+                existingTarget.timeout = setTimeout(()=> {
 
                     // Set the new targets provided directly
                     for (let i = 0 ; i < targets.length; i++) {
@@ -251,36 +256,36 @@ import {spring} from "declarative/controllers"
                 }, waitFor)
             }
 
-        ,   _addTransform: function (transform, relative) {
+        ,   _bakeTransforms: function () {
 
-                // Work out the new matrix
-                if (relative) {
+                // Calculate the net matrix
+                let {
+                    translation, rotation, scale, flip, skew
+                } = this.proposedTransforms
+                this.transformTarget = translation
+                    .multiply(this.fromOrigin)
+                    .multiply(rotation)
+                    .multiply(scale)
+                    .multiply(flip)
+                    .multiply(skew)
+                    .multiply(this.toOrigin)
 
-                    // If its a relative transform, we just modify the last
-                    // matrix and reset the proposed transforms immediately
-
-                } else {
-
-                    // Apply the proposed transforms by multiplying them in
-                    // the correct order and replacing the target
-
-                }
-
-                // Update the transform targets
+                // Add the target for the new transform
+                this._addTarget("transform", [this.transformTarget])
             }
 
-        ,   _resetProposedTransforms: function () {
+        ,   _resetTransformProposal: function () {
+
                 this.proposedTransforms = {
-                    translate: identity,
-                    rotate: identity,
-                    scale: identity,
-                    skew: identity,
+                    translation: new SVG.Matrix(),
+                    rotation: new SVG.Matrix(),
+                    scale: new SVG.Matrix(),
+                    flip: new SVG.Matrix(),
+                    skew: new SVG.Matrix(),
                 }
-                return this.proposedTransforms
             }
 
-        // Properties
-        ,   attr: function (key, value) {
+        ,   _attrStyle: function (key, value, type) {
 
                 if (typeof key == 'object') {
 
@@ -289,35 +294,29 @@ import {spring} from "declarative/controllers"
 
                     // Iterate over the keys and values and run them
                     for (let key in obj) if (obj.hasOwnProperty(key)) {
-                        this.attr(key, obj[key])
+                        this[type](key, obj[key])
                     }
 
                 } else {
-                    let startValue = ()=> [key, this.element.attr(key)]
-                    this._addTarget(`attr_${key}`, [key, value], startValue)
+                    let startValue = ()=> [key, this.element[type](key)]
+                    this._addTarget(`${type}_${key}`, [key, value], startValue)
                 }
+            }
+
+        // Properties
+
+        ,   attr: function (key, value) {
+                this._attrStyle(key, value, "attr")
                 return this
             }
 
         ,   style: function (key, value) {
-
-                if (typeof key == "object") {
-
-                    // We are dealing with an object, so loop over it
-                    let obj = key
-
-                    // Iterate over the keys and values and run them
-                    for (let key in obj) if (obj.hasOwnProperty(key)) {
-                        this.attr(key, obj[key])
-                    }
-
-                } else {
-
-                }
+                this._attrStyle(key, value, "style")
                 return this
             }
 
         // Basic movements
+
         ,   x: function (x, relative) {
 
                 if (this.element instanceof SVG.G) {
@@ -334,7 +333,7 @@ import {spring} from "declarative/controllers"
 
                     // Add an x target directly
                     this._addTarget("x",
-                        [relative ? x + currentX : x],
+                        [relative ? x + currentX() : x],
                         currentX)
                 }
                 return this
@@ -390,30 +389,106 @@ import {spring} from "declarative/controllers"
 
         // Transformations
 
-        ,   matrix: function (matrix, relative) {
+        ,   matrix: function (matrix, relative=false) {
 
+                this._resetTransformProposal()
+                this.transformTarget = relative
+                    ? this.transformTarget.multiply(matrix)
+                    : matrix
+                this._addTarget("transform", [this.transformTarget])
+                return this
             }
 
-        ,   rotate: function (theta, relative) {
+        ,   rotate: function (theta, relative=false) {
 
+                // Calculate the rotation matrix
+                let thetaRad = Math.PI * theta / 180
+                let [c, s] = [Math.cos(thetaRad), Math.sin(thetaRad)]
+                let rotation = new SVG.Matrix([c, s, -s, c, 0 , 0])
+
+                // We set the proposed transform and bake it if necessary,
+                // otherwise, we just apply it as a relative matrix
+                this.proposedTransforms.rotation = rotation
+                if (relative) this.matrix(rotation, relative)
+                else this._bakeTransforms()
+                return this
             }
 
-        ,   translate: function (x, y, relative) {
+        ,   translate: function (x, y, relative=false) {
 
+                // Construct the matrix
+                let translation = new SVG.Matrix([1, 0, 0, 1, x, y])
+
+                // We set the proposed transform and bake it if necessary,
+                // otherwise, we just apply it as a relative matrix
+                this.proposedTransforms.translation = translation
+                if (relative) this.matrix(translation, relative)
+                else this._bakeTransforms()
+                return this
             }
 
-        ,   scale: function (sx, sy, relative) {
+        ,   position: function (x, y) {
 
+                // Forcibly place the center at the x, y position given
+                let [cx, cy] = this.transformOrigin
+                this.translate(x - cx, y - cy, false)
+                return this
             }
 
-        ,   skew: function (lamX, lamY, relative) {
+        ,   scale: function (sx, sy, relative=false) {
 
+                // The user can provide only one scale for a proportional scale
+                if (!isFinite(sy)) {
+                    relative = sy || relative
+                    sy = sx
+                }
+
+                // Build the scale matrix
+                let scale = new SVG.Matrix([sx, 0, 0, sy, 0, 0])
+
+                // We set the proposed transform and bake it if necessary,
+                // otherwise, we just apply it as a relative matrix
+                this.proposedTransforms.scale = scale
+                if (relative) this.matrix(scale, relative)
+                else this._bakeTransforms()
+                return this
             }
 
-        ,   flip: function (direction="x", relative) {
+        ,   flip: function (direction="x", relative=false) {
 
+                // Build the flip matrix
+                if (relative) {
+                    let flip = new SVG.Matrix()
+                    flip[direction == "x" ? "a" : "d"] = -1
+                    this.matrix(scale, relative)
+
+                } else {
+
+                    // Flip the respective entry in the flip matrix
+                    this.proposedTransforms
+                        .flip[direction == "x" ? "a" : "d"] *= -1
+                    this._bakeTransforms()
+                }
+                return this
             }
-        }
+
+        ,   skew: function (lamX, lamY, relative=false) {
+
+                // The user can provide only one skew for a proportional skew
+                if (!isFinite(sy)) {
+                    relative = lamY || relative
+                    lamY = lamX
+                }
+
+                // Calculate the skew matrix
+                let skew = new SVG.Matrix([1, lamY, lamX, 1, 0, 0])
+
+                // Modify the current matrix
+                this.proposedTransforms.skew = skew
+                if (relative) this.matrix(skew, relative)
+                else this._bakeTransforms()
+                return this
+            }
 
         // Syntax Sugar
 
@@ -436,6 +511,7 @@ import {spring} from "declarative/controllers"
         ,   height: function (item) {
 
             }
+        }
     })
 
 }).call(this)
