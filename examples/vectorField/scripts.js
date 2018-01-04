@@ -20,7 +20,7 @@ canvas.mousemove(e=> {
     let dfdx = (f(x + 1e-6, y) - f(x - 1e-6, y)) / 2e-6
     let dfdy = (f(x, y + 1e-6) - f(x, y - 1e-6)) / 2e-6
     let len = Math.sqrt(dfdx ** 2 + dfdy ** 2)
-    let ang = Math.atan2(dfdy, dfdx) * 180 / Math.PI
+    let ang = 180 * Math.atan2(dfdy, dfdx) / Math.PI
 
     // Move the target to the required place
     target.declarative()
