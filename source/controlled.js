@@ -23,8 +23,19 @@ class ConstantC {
 
 class NumberC {
 
-    constructor (target) {
+    constructor (target, min, max) {
         this.reset(target)
+        this.min = min
+        this.max = max
+    }
+
+    reset (newValue) {
+        this.currentTarget = Number(newValue)
+        this.position = Number(newValue)
+        this.error = 0
+        this.velocity = 0
+        this.acceleration = 0
+        this.integral = 0
     }
 
     target (newTarget) {
@@ -36,6 +47,9 @@ class NumberC {
     }
 
     value () {
+        let value = value < this.min ? this.min
+            : value > this.max ? this.max
+            : this.position
         return this.position
     }
 
@@ -61,14 +75,46 @@ class NumberC {
         let convergence = Math.abs((sNew || 0) + (vNew || 0) + (aNew || 0))
         return convergence
     }
+}
 
-    reset (newValue) {
-        this.currentTarget = Number(newValue)
-        this.position = Number(newValue)
-        this.error = 0
-        this.velocity = 0
-        this.acceleration = 0
-        this.integral = 0
+
+class CircularC extends NumberC {
+
+    constructor (target, min, max) {
+        super(target, min, max)
+        this.range = max - min
+        this.getError = CircularC.circularDifference(min, max)
+    }
+
+    target (newTarget) {
+        if (isFinite(newTarget)) {
+            this.currentTarget = Number(newTarget)
+            this.error = this.getError(this.currentTarget, this.position)
+        }
+        return this.currentTarget
+    }
+
+    step (controller, dt) {
+
+        let convergence = super.step(controller, dt)
+        this.position = this.min + CircularC.mod(this.position, this.range)
+        this.error = this.getError(this.position, this.currentTarget)
+        return convergence
+    }
+
+    static circularDifference(min, max) {
+
+        // Form the circular difference function
+        let diff = max - min
+        function circular (target, angle) {
+            return CircularC.mod(target - angle + diff / 2, diff) - diff / 2
+        }
+        return circular
+    }
+
+    // Define a modulo function since javascript doesn't behave properly
+    static mod (a, n) {
+        return a - n * Math.floor(a / n)
     }
 }
 
@@ -79,6 +125,7 @@ class MatrixC {
 
         // Store all of the parameters
         this.currentMatrix = matrix
+        this.thetaController = new CircularC(0, 0, 360)
         this.controllers = [
             new NumberC(matrix.a), new NumberC(matrix.b),
             new NumberC(matrix.c), new NumberC(matrix.d),
@@ -120,6 +167,9 @@ class MatrixC {
             } = decompose(matrix, this.cx, this.cy)
             v = [translateX, translateY, theta, scaleX, scaleY, shear]
 
+            // Set the angular controller correctly
+            this.thetaController[reset ? "reset" : "target"](theta)
+
         } else {
             v = [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f]
         }
@@ -147,6 +197,10 @@ class MatrixC {
             let parameters = this.controllers
                 .map(c=> c.value())
                 .concat([this.cx, this.cy])
+
+            // Replace the theta value for the one from the theta controller
+            convergence += this.thetaController.step(controller, dt)
+            parameters[2] = this.thetaController.value()
 
             // Compose the affine parameters into a matrix
             this.currentMatrix = compose(...parameters)

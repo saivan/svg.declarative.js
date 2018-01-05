@@ -1,13 +1,16 @@
 
+import Queue from "declarative/queue"
+
 export class DrawLoop {
 
     constructor () {
         this.nextDraw = null
-        this.frames = []
+        this.frames = new Queue()
         this.timeouts = []
         this.frameCount = 0
         this.timeoutCount = 0
         this.timer = performance
+        this.drawIt = this._draw.bind(this)
     }
 
     frame (method) {
@@ -16,7 +19,7 @@ export class DrawLoop {
             run: method
         })
         if (this.nextDraw === null)
-            this.nextDraw = requestAnimationFrame(this._draw.bind(this))
+            this.nextDraw = requestAnimationFrame(this.drawIt)
         return this.frameCount++
     }
 
@@ -38,7 +41,7 @@ export class DrawLoop {
             time: time,
         })
         if (this.nextDraw === null)
-            this.nextDraw = requestAnimationFrame(this._draw.bind(this))
+            this.nextDraw = requestAnimationFrame(this.drawIt)
         return thisId
     }
 
@@ -56,12 +59,12 @@ export class DrawLoop {
          */
 
         // Figure out the final index to run till
-        let iStopTimeouts = this.timeouts.findIndex(t => t.time > now)
-        if (iStopTimeouts == -1) iStopTimeouts == this.timeouts.length
+        let iStop = this.timeouts.findIndex(t=> t.time > now)
+        if (iStop < 0) iStop = this.timeouts.length
 
         // Take out the timeouts that should run
         let runTimeouts = this.timeouts
-        this.timeouts = this.timeouts.splice(iStopTimeouts)
+        this.timeouts = this.timeouts.splice(iStop)
 
         // Run the timeouts directly
         for (let timeout of runTimeouts)
@@ -71,24 +74,15 @@ export class DrawLoop {
          * Dealing with frames
          */
 
-        if (this.frames.length) {
-
-            // Figure out which frames should fire
-            let iFirst = this.frames[0].id
-            let iStopFrames = this.frameCount - iFirst + 1
-
-            // Take out the frames that should fire
-            let runFrames = this.frames
-            this.frames = this.frames.splice(iStopFrames)
-
-            // Execute the animation frames and empty this.nextDraw
-            for (let frame of runFrames)
-                frame.run(now)
+        let lastId = this.frameCount
+        while (this.frames.peek() && this.frames.peek().id < lastId) {
+            let nextFrame = this.frames.shift()
+            nextFrame.run(now)
         }
 
-        // If we have remaining timeouts, loop until we don't
-        this.nextDraw = this.timeouts.length > 0 && this.frames.length > 0
-            ? requestAnimationFrame(this._draw.bind(this))
+        // If we have remaining timeouts or frames, draw until we don't anymore
+        this.nextDraw = this.timeouts.length > 0 || this.frames.length > 0
+            ? requestAnimationFrame(this.drawIt)
             : null
     }
 }

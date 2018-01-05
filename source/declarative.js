@@ -20,7 +20,7 @@ SVG.declarative = SVG.invent({
         // desired state directly.
         this.convergenceThreshold = 1e-6
         this.activeController = null
-        this.useLast = true
+        this.useLast = false
         this.nextFrame = null
         this.targetTime = null
         this.playSpeed = 1
@@ -73,7 +73,7 @@ SVG.declarative = SVG.invent({
             if (this.chaser) {
 
                 if (controller)
-                    this.chaser.controller(newController)
+                    this.chaser.controller(controller)
 
             } else {
                 this.chaser = new SVG

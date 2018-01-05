@@ -191,7 +191,7 @@ SVG.declarative = SVG.invent({
         // desired state directly.
         this.convergenceThreshold = 1e-6;
         this.activeController = null;
-        this.useLast = true;
+        this.useLast = false;
         this.nextFrame = null;
         this.targetTime = null;
         this.playSpeed = 1;
@@ -245,7 +245,7 @@ SVG.declarative = SVG.invent({
 
             if (this.chaser) {
 
-                if (controller) this.chaser.controller(newController);
+                if (controller) this.chaser.controller(controller);
             } else {
                 this.chaser = new SVG.declarative(this).controller(controller);
             }
@@ -797,6 +797,8 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
+var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
+
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -806,6 +808,10 @@ exports.default = Control;
 var _affine = __webpack_require__(0);
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -837,13 +843,25 @@ var ConstantC = function () {
 }();
 
 var NumberC = function () {
-    function NumberC(target) {
+    function NumberC(target, min, max) {
         _classCallCheck(this, NumberC);
 
         this.reset(target);
+        this.min = min;
+        this.max = max;
     }
 
     _createClass(NumberC, [{
+        key: "reset",
+        value: function reset(newValue) {
+            this.currentTarget = Number(newValue);
+            this.position = Number(newValue);
+            this.error = 0;
+            this.velocity = 0;
+            this.acceleration = 0;
+            this.integral = 0;
+        }
+    }, {
         key: "target",
         value: function target(newTarget) {
             if (isFinite(newTarget)) {
@@ -855,6 +873,7 @@ var NumberC = function () {
     }, {
         key: "value",
         value: function value() {
+            var value = value < this.min ? this.min : value > this.max ? this.max : this.position;
             return this.position;
         }
     }, {
@@ -885,20 +904,65 @@ var NumberC = function () {
             var convergence = Math.abs((sNew || 0) + (vNew || 0) + (aNew || 0));
             return convergence;
         }
-    }, {
-        key: "reset",
-        value: function reset(newValue) {
-            this.currentTarget = Number(newValue);
-            this.position = Number(newValue);
-            this.error = 0;
-            this.velocity = 0;
-            this.acceleration = 0;
-            this.integral = 0;
-        }
     }]);
 
     return NumberC;
 }();
+
+var CircularC = function (_NumberC) {
+    _inherits(CircularC, _NumberC);
+
+    function CircularC(target, min, max) {
+        _classCallCheck(this, CircularC);
+
+        var _this = _possibleConstructorReturn(this, (CircularC.__proto__ || Object.getPrototypeOf(CircularC)).call(this, target, min, max));
+
+        _this.range = max - min;
+        _this.getError = CircularC.circularDifference(min, max);
+        return _this;
+    }
+
+    _createClass(CircularC, [{
+        key: "target",
+        value: function target(newTarget) {
+            if (isFinite(newTarget)) {
+                this.currentTarget = Number(newTarget);
+                this.error = this.getError(this.currentTarget, this.position);
+            }
+            return this.currentTarget;
+        }
+    }, {
+        key: "step",
+        value: function step(controller, dt) {
+
+            var convergence = _get(CircularC.prototype.__proto__ || Object.getPrototypeOf(CircularC.prototype), "step", this).call(this, controller, dt);
+            this.position = this.min + CircularC.mod(this.position, this.range);
+            this.error = this.getError(this.position, this.currentTarget);
+            return convergence;
+        }
+    }], [{
+        key: "circularDifference",
+        value: function circularDifference(min, max) {
+
+            // Form the circular difference function
+            var diff = max - min;
+            function circular(target, angle) {
+                return CircularC.mod(target - angle + diff / 2, diff) - diff / 2;
+            }
+            return circular;
+        }
+
+        // Define a modulo function since javascript doesn't behave properly
+
+    }, {
+        key: "mod",
+        value: function mod(a, n) {
+            return a - n * Math.floor(a / n);
+        }
+    }]);
+
+    return CircularC;
+}(NumberC);
 
 var MatrixC = function () {
     function MatrixC() {
@@ -910,6 +974,7 @@ var MatrixC = function () {
 
         // Store all of the parameters
         this.currentMatrix = matrix;
+        this.thetaController = new CircularC(0, 0, 360);
         this.controllers = [new NumberC(matrix.a), new NumberC(matrix.b), new NumberC(matrix.c), new NumberC(matrix.d), new NumberC(matrix.e), new NumberC(matrix.f)];
 
         // If we want an affine transformation, we find the parameters
@@ -959,6 +1024,9 @@ var MatrixC = function () {
                     shear = _decompose.shear;
 
                 v = [translateX, translateY, theta, scaleX, scaleY, shear];
+
+                // Set the angular controller correctly
+                this.thetaController[reset ? "reset" : "target"](theta);
             } else {
                 v = [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f];
             }
@@ -1012,6 +1080,10 @@ var MatrixC = function () {
                 var parameters = this.controllers.map(function (c) {
                     return c.value();
                 }).concat([this.cx, this.cy]);
+
+                // Replace the theta value for the one from the theta controller
+                convergence += this.thetaController.step(controller, dt);
+                parameters[2] = this.thetaController.value();
 
                 // Compose the affine parameters into a matrix
                 this.currentMatrix = _affine.compose.apply(undefined, _toConsumableArray(parameters));
@@ -1242,8 +1314,15 @@ function spring() {
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+exports.DrawLoop = undefined;
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _queue = __webpack_require__(5);
+
+var _queue2 = _interopRequireDefault(_queue);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -1252,11 +1331,12 @@ var DrawLoop = exports.DrawLoop = function () {
         _classCallCheck(this, DrawLoop);
 
         this.nextDraw = null;
-        this.frames = [];
+        this.frames = new _queue2.default();
         this.timeouts = [];
         this.frameCount = 0;
         this.timeoutCount = 0;
         this.timer = performance;
+        this.drawIt = this._draw.bind(this);
     }
 
     _createClass(DrawLoop, [{
@@ -1266,7 +1346,7 @@ var DrawLoop = exports.DrawLoop = function () {
                 id: this.frameCount,
                 run: method
             });
-            if (this.nextDraw === null) this.nextDraw = requestAnimationFrame(this._draw.bind(this));
+            if (this.nextDraw === null) this.nextDraw = requestAnimationFrame(this.drawIt);
             return this.frameCount++;
         }
     }, {
@@ -1289,7 +1369,7 @@ var DrawLoop = exports.DrawLoop = function () {
                 run: method,
                 time: time
             });
-            if (this.nextDraw === null) this.nextDraw = requestAnimationFrame(this._draw.bind(this));
+            if (this.nextDraw === null) this.nextDraw = requestAnimationFrame(this.drawIt);
             return thisId;
         }
     }, {
@@ -1311,14 +1391,14 @@ var DrawLoop = exports.DrawLoop = function () {
              */
 
             // Figure out the final index to run till
-            var iStopTimeouts = this.timeouts.findIndex(function (t) {
+            var iStop = this.timeouts.findIndex(function (t) {
                 return t.time > now;
             });
-            if (iStopTimeouts == -1) iStopTimeouts == this.timeouts.length;
+            if (iStop < 0) iStop = this.timeouts.length;
 
             // Take out the timeouts that should run
             var runTimeouts = this.timeouts;
-            this.timeouts = this.timeouts.splice(iStopTimeouts);
+            this.timeouts = this.timeouts.splice(iStop);
 
             // Run the timeouts directly
             var _iteratorNormalCompletion = true;
@@ -1348,50 +1428,71 @@ var DrawLoop = exports.DrawLoop = function () {
                 }
             }
 
-            if (this.frames.length) {
-
-                // Figure out which frames should fire
-                var iFirst = this.frames[0].id;
-                var iStopFrames = this.frameCount - iFirst + 1;
-
-                // Take out the frames that should fire
-                var runFrames = this.frames;
-                this.frames = this.frames.splice(iStopFrames);
-
-                // Execute the animation frames and empty this.nextDraw
-                var _iteratorNormalCompletion2 = true;
-                var _didIteratorError2 = false;
-                var _iteratorError2 = undefined;
-
-                try {
-                    for (var _iterator2 = runFrames[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-                        var frame = _step2.value;
-
-                        frame.run(now);
-                    }
-                } catch (err) {
-                    _didIteratorError2 = true;
-                    _iteratorError2 = err;
-                } finally {
-                    try {
-                        if (!_iteratorNormalCompletion2 && _iterator2.return) {
-                            _iterator2.return();
-                        }
-                    } finally {
-                        if (_didIteratorError2) {
-                            throw _iteratorError2;
-                        }
-                    }
-                }
+            var lastId = this.frameCount;
+            while (this.frames.peek() && this.frames.peek().id < lastId) {
+                var nextFrame = this.frames.shift();
+                nextFrame.run(now);
             }
 
-            // If we have remaining timeouts, loop until we don't
-            this.nextDraw = this.timeouts.length > 0 && this.frames.length > 0 ? requestAnimationFrame(this._draw.bind(this)) : null;
+            // If we have remaining timeouts or frames, draw until we don't anymore
+            this.nextDraw = this.timeouts.length > 0 || this.frames.length > 0 ? requestAnimationFrame(this.drawIt) : null;
         }
     }]);
 
     return DrawLoop;
 }();
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Queue = function () {
+    function Queue() {
+        _classCallCheck(this, Queue);
+
+        this.first = undefined;
+        this.last = undefined;
+        this.length = 0;
+    }
+
+    _createClass(Queue, [{
+        key: "push",
+        value: function push(value) {
+            var node = { value: value };
+            if (this.last) this.last = this.last.next = node;else this.last = this.first = node;
+            this.length++;
+        }
+    }, {
+        key: "shift",
+        value: function shift() {
+            if (this.length == 0) return;
+            var remove = this.first;
+            this.first = remove.next;
+            this.last = --this.length ? this.last : undefined;
+            return remove.value;
+        }
+    }, {
+        key: "peek",
+        value: function peek() {
+            if (this.first) return this.first.value;
+        }
+    }]);
+
+    return Queue;
+}();
+
+exports.default = Queue;
 
 /***/ })
 /******/ ]);

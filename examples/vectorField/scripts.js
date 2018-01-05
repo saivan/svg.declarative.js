@@ -1,6 +1,5 @@
 
 import "declarative/declarative"
-import {spring} from "declarative/controllers"
 
 let canvas = SVG.select("#canvas").first()
 let target = SVG.select("#target").first()
@@ -9,7 +8,8 @@ let triangle = SVG.select("#vector").first()
 // Get the matrix to move to the svg space
 let pageToSvg = canvas.ctm().inverse()
 let f = (x, y)=> (2 * x + y - 650) ** 2 / 10000 + (x - 200) ** 2 / 3000 + 200
-let controller = spring({settleTime: 300, overshoot: 30})
+let controller = SVG.controllers.spring({settleTime: 500, overshoot: 20})
+
 canvas.mousemove(e=> {
 
     // Get the current mouse position and transform it into svg space
@@ -23,15 +23,12 @@ canvas.mousemove(e=> {
     let ang = 180 * Math.atan2(dfdy, dfdx) / Math.PI
 
     // Move the target to the required place
-    target.declarative()
-        .delay(100)
+    target.declarative(controller)
+        .scale(fxy / 200)
         .position(x, y)
-        .scale(fxy / 400)
 
     // Change the transforms
-    triangle.declarative()
-        .affine(false)
-        .delay(100)
+    triangle.declarative(controller)
         .around(100, 100)
         .rotate(ang)
         .position(x, y)
