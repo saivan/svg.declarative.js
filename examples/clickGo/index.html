@@ -1,0 +1,27 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Mouse Follower</title>
+
+        <style media="screen">
+            svg {
+                background-color: #ECF0F1;
+            }
+        </style>
+    </head>
+
+    <body>
+
+        <svg id="canvas" width=500px ViewBox="0 0 800 500">
+            <circle id="target" cx=250 cy=50 r=10 fill=#DB0A5B />
+            <circle id="follower" cx=250 cy=50 r=20 fill=#FABE58 />
+        </svg>
+
+    </body>
+
+    <!-- webpack has a mime type bug for now, so we are just using a cdn -->
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/2.6.3/svg.js" charset="utf-8"></script>
+    <script type="text/javascript" src="./bundle.js" charset="utf-8"></script>
+</html>

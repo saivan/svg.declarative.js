@@ -325,16 +325,10 @@ SVG.declarative = SVG.invent({
 
             } else {
 
-                // Get the current position for this object
-                let control = this.targets.get("x")
-                let currentX = ()=> control
-                    ? control.inputs[0].target()
-                    : this.element.x()
-
                 // Add an x target directly
                 this._addTarget("x",
-                    [relative ? x + currentX() : x],
-                    currentX)
+                    [relative ? x + this.element.x() : x],
+                    ()=> [this.element.x()])
             }
             return this
         }
@@ -347,16 +341,10 @@ SVG.declarative = SVG.invent({
 
             } else {
 
-                // Get the current position for this object
-                let control = this.targets.get("y")
-                let currentY = ()=> control
-                    ? control.inputs[0].target()
-                    : this.element.x()
-
                 // Add a y target directly
                 this._addTarget("y",
                     [relative ? y + currentY : y],
-                    currentY)
+                    ()=> [this.element.y()])
             }
             return this
         }
