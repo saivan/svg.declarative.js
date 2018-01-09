@@ -399,6 +399,22 @@ SVG.declarative = SVG.invent({
 
         around: function around(ox, oy) {
 
+            if (typeof ox == "string") {
+
+                // Get the bounding box and the string provided
+                var _element$bbox2 = this.element.bbox(),
+                    x = _element$bbox2.x,
+                    y = _element$bbox2.y,
+                    width = _element$bbox2.width,
+                    height = _element$bbox2.height;
+
+                var string = ox.toLowerCase().trim();
+
+                // Set the bounds eg : "bottom-left", "Top right", "middle" etc...
+                ox = string.endsWith("left") ? x : string.endsWith("right") ? x + width : x + width / 2;
+                oy = string.startsWith("top") ? y : string.startsWith("bottom") ? y + height : y + height / 2;
+            }
+
             // Sets the transformation origin explicitly, by default, the
             // transform origin is around the center of the bbox
             this.transformOrigin = [ox, oy];
@@ -557,14 +573,10 @@ SVG.declarative = SVG.invent({
 
             } else {
 
-                // Get the current position for this object
-                var control = this.targets.get("x");
-                var currentX = function currentX() {
-                    return control ? control.inputs[0].target() : _this3.element.x();
-                };
-
                 // Add an x target directly
-                this._addTarget("x", [relative ? _x7 + currentX() : _x7], currentX);
+                this._addTarget("x", [relative ? _x7 + this.element.x() : _x7], function () {
+                    return [_this3.element.x()];
+                });
             }
             return this;
         },
@@ -578,14 +590,10 @@ SVG.declarative = SVG.invent({
 
             } else {
 
-                // Get the current position for this object
-                var control = this.targets.get("y");
-                var currentY = function currentY() {
-                    return control ? control.inputs[0].target() : _this4.element.x();
-                };
-
                 // Add a y target directly
-                this._addTarget("y", [relative ? _y + currentY : _y], currentY);
+                this._addTarget("y", [relative ? _y + currentY : _y], function () {
+                    return [_this4.element.y()];
+                });
             }
             return this;
         },
@@ -661,17 +669,6 @@ SVG.declarative = SVG.invent({
             return this;
         },
 
-        position: function position(x, y) {
-
-            // Forcibly place the center at the x, y position given
-            var _transformOrigin = _slicedToArray(this.transformOrigin, 2),
-                cx = _transformOrigin[0],
-                cy = _transformOrigin[1];
-
-            this.translate(x - cx, y - cy, false);
-            return this;
-        },
-
         scale: function scale(sx, sy) {
             var relative = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
 
@@ -732,7 +729,28 @@ SVG.declarative = SVG.invent({
 
         // Syntax Sugar
 
-        , fill: function fill(item) {
+        , position: function position(x, y) {
+
+            // Forcibly place the center at the x, y position given
+            var _transformOrigin = _slicedToArray(this.transformOrigin, 2),
+                cx = _transformOrigin[0],
+                cy = _transformOrigin[1];
+
+            this.translate(x - cx, y - cy, false);
+            return this;
+        },
+
+        width: function width(item) {
+            this.attr("width", item);
+            return this;
+        },
+
+        height: function height(item) {
+            this.attr("height", item);
+            return this;
+        },
+
+        fill: function fill(item) {
 
             // Strings are always assumed to be fills
             if (typeof item == "string") {
@@ -770,15 +788,11 @@ SVG.declarative = SVG.invent({
             return this;
         },
 
-        width: function width(item) {
-            this.attr("width", item);
-            return this;
-        },
-
-        height: function height(item) {
-            this.attr("height", item);
+        opacity: function opacity(amount) {
+            this.attr("opacity", amount);
             return this;
         }
+
     }
 });
 
