@@ -1346,7 +1346,7 @@ var DrawLoop = exports.DrawLoop = function () {
 
         this.nextDraw = null;
         this.frames = new _queue2.default();
-        this.timeouts = [];
+        this.timeouts = new _queue2.default();
         this.frameCount = 0;
         this.timeoutCount = 0;
         this.timer = performance;
@@ -1372,17 +1372,15 @@ var DrawLoop = exports.DrawLoop = function () {
             // Work out when the event should fire
             var time = this.timer.now() + delay;
 
-            // Find the first time lower than the required time
-            var iSplice = this.timeouts.length;
-            for (; iSplice > 0; iSplice--) {
-                if (this.timeouts[iSplice - 1].time < time) break;
-            } // Insert the timeout there directly
+            // Add the timeout to the end of the queue
             var thisId = this.timeoutCount++;
-            this.timeouts.splice(iSplice, 0, {
+            this.timeouts.push({
                 id: thisId,
                 run: method,
                 time: time
             });
+
+            // Request another animation frame if we need one
             if (this.nextDraw === null) this.nextDraw = requestAnimationFrame(this.drawIt);
             return thisId;
         }
@@ -1391,59 +1389,31 @@ var DrawLoop = exports.DrawLoop = function () {
         value: function cancelTimeout(id) {
 
             // Find the index of the timeout to cancel and remove it
-            var index = this.timeouts.findIndex(function (t) {
+            var index = this.timeouts.remove(function (t) {
                 return t.id == id;
             });
-            if (index >= 0) this.timeouts.splice(index, 1);
         }
     }, {
         key: "_draw",
         value: function _draw(now) {
 
-            /**
-             * Dealing with timeouts
-             */
+            // Run all the timeouts we can run, if they are not ready yet, add them
+            // to the end of the queue immediately! (bad timeouts!!! [sarcasm])
+            var tracking = true,
+                nextTimeout = null;
+            var lastTimeoutId = this.timeouts.peekLast() && this.timeouts.peekLast().id;
+            while (tracking && (nextTimeout = this.timeouts.shift())) {
 
-            // Figure out the final index to run till
-            var iStop = this.timeouts.findIndex(function (t) {
-                return t.time > now;
-            });
-            if (iStop < 0) iStop = this.timeouts.length;
+                // If we hit the last item, we should stop shifting out more items
+                if (nextTimeout.id == lastTimeoutId) tracking = false;
 
-            // Take out the timeouts that should run
-            var runTimeouts = this.timeouts;
-            this.timeouts = this.timeouts.splice(iStop);
-
-            // Run the timeouts directly
-            var _iteratorNormalCompletion = true;
-            var _didIteratorError = false;
-            var _iteratorError = undefined;
-
-            try {
-                for (var _iterator = runTimeouts[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-                    var timeout = _step.value;
-
-                    timeout.run();
-                } /**
-                   * Dealing with frames
-                   */
-            } catch (err) {
-                _didIteratorError = true;
-                _iteratorError = err;
-            } finally {
-                try {
-                    if (!_iteratorNormalCompletion && _iterator.return) {
-                        _iterator.return();
-                    }
-                } finally {
-                    if (_didIteratorError) {
-                        throw _iteratorError;
-                    }
-                }
+                // Run the timeout if its time, or push it to the end
+                if (now > nextTimeout.time) nextTimeout.run();else this.timeouts.push(nextTimeout);
             }
 
-            var lastId = this.frameCount;
-            while (this.frames.peek() && this.frames.peek().id < lastId) {
+            // Run all of the frames available up until this point
+            var lastFrameId = this.frameCount;
+            while (this.frames.peek() && this.frames.peek().id < lastFrameId) {
                 var nextFrame = this.frames.shift();
                 nextFrame.run(now);
             }
@@ -1478,12 +1448,13 @@ var Queue = function () {
         this.first = undefined;
         this.last = undefined;
         this.length = 0;
+        this.id = 0;
     }
 
     _createClass(Queue, [{
         key: "push",
         value: function push(value) {
-            var node = { value: value };
+            var node = { id: this.id++, value: value };
             if (this.last) this.last = this.last.next = node;else this.last = this.first = node;
             this.length++;
         }
@@ -1500,6 +1471,41 @@ var Queue = function () {
         key: "peek",
         value: function peek() {
             if (this.first) return this.first.value;
+        }
+    }, {
+        key: "peekLast",
+        value: function peekLast() {
+            if (this.last) return this.last.value;
+        }
+    }, {
+        key: "remove",
+        value: function remove(matcher) {
+
+            // Find the first match
+            var previous = null,
+                current = this.first;
+            while (current) {
+
+                // If we have a match, we are done
+                if (matcher(current.value)) break;
+
+                // Otherwise, advance both of the pointers
+                previous = current;
+                current = current.next;
+            }
+
+            // If we got the first item, adjust the first pointer
+            if (current && current.id == this.first.id) this.first = this.first.next;
+
+            // If we got the last item, adjust the last pointer
+            if (current && current.id == this.last.id) this.last = previous;
+
+            // If we got an item, fix the list and return the item
+            if (current) {
+                this.length--;
+                if (previous) previous.next = current.next;
+                return current.item;
+            }
         }
     }]);
 
