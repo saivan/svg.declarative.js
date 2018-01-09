@@ -43,7 +43,7 @@ This is a powerful abstraction, but __you won't need to define your own controll
 A simple example is the damped spring, which simulates a bouncy spring:
 
     SVG.controllers.spring({
-        overshoot: 15,   // The percentage you want the object to shoot past the target before coming back
+        overShoot: 15,   // The percentage you want the object to shoot past the target before coming back
         settleTime: 500, // The number of miliseconds before the object should settle
     })
 
@@ -85,9 +85,11 @@ Allows you to pass in another function to act as the new controller from this po
 
 If useAffine is true, we attempt to preserve lengths while animating. Otherwise, we will directly morph one transformation into another, which is preferable in some circumstances.
 
-    element.around(center)
+    element.around(cx, cy)
 
 If we are using affine transformations, we can set a transformation origin. This will guarantee that the transformations happen around a given origin to avoid any weird warping.
+
+Another cool addition is that you can use strings like `top left`, `Top-Right`, `Bottom` or `middle` and these should automatically set the transform origin around the corresponding point on the bounding box.
 
     element.threshold(amount)
 

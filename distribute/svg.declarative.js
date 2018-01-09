@@ -1298,12 +1298,12 @@ function spring() {
     var _ref = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
         _ref$settleTime = _ref.settleTime,
         settleTime = _ref$settleTime === undefined ? 500 : _ref$settleTime,
-        _ref$overshoot = _ref.overshoot,
-        overshoot = _ref$overshoot === undefined ? 15 : _ref$overshoot;
+        _ref$overShoot = _ref.overShoot,
+        overShoot = _ref$overShoot === undefined ? 15 : _ref$overShoot;
 
     // Calculate the PID natural response
     var eps = 1e-10;
-    var os = overshoot / 100 + eps;
+    var os = overShoot / 100 + eps;
     var zeta = -Math.log(os) / Math.sqrt(Math.pow(Math.PI, 2) + Math.pow(Math.log(os), 2));
     var wn = 4 / (zeta * settleTime / 1000);
 
