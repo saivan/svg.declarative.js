@@ -6,7 +6,7 @@ export class DrawLoop {
     constructor () {
         this.nextDraw = null
         this.frames = new Queue()
-        this.timeouts = []
+        this.timeouts = new Queue()
         this.frameCount = 0
         this.timeoutCount = 0
         this.timer = performance
@@ -28,18 +28,15 @@ export class DrawLoop {
         // Work out when the event should fire
         let time = this.timer.now() + delay
 
-        // Find the first time lower than the required time
-        let iSplice = this.timeouts.length
-        for (; iSplice > 0; iSplice--)
-            if (this.timeouts[iSplice - 1].time < time) break
-
-        // Insert the timeout there directly
+        // Add the timeout to the end of the queue
         let thisId = this.timeoutCount++
-        this.timeouts.splice(iSplice, 0, {
+        this.timeouts.push({
             id: thisId,
             run: method,
             time: time,
         })
+
+        // Request another animation frame if we need one
         if (this.nextDraw === null)
             this.nextDraw = requestAnimationFrame(this.drawIt)
         return thisId
@@ -48,34 +45,29 @@ export class DrawLoop {
     cancelTimeout (id) {
 
         // Find the index of the timeout to cancel and remove it
-        let index = this.timeouts.findIndex(t=> t.id == id)
-        if (index >= 0) this.timeouts.splice(index, 1)
+        let index = this.timeouts.remove(t=> t.id == id)
     }
 
     _draw (now) {
 
-        /**
-         * Dealing with timeouts
-         */
+        // Run all the timeouts we can run, if they are not ready yet, add them
+        // to the end of the queue immediately! (bad timeouts!!! [sarcasm])
+        let tracking = true, nextTimeout = null
+        let lastTimeoutId = (this.timeouts.peekLast() &&
+            this.timeouts.peekLast().id)
+        while (tracking && (nextTimeout = this.timeouts.shift())) {
 
-        // Figure out the final index to run till
-        let iStop = this.timeouts.findIndex(t=> t.time > now)
-        if (iStop < 0) iStop = this.timeouts.length
+            // If we hit the last item, we should stop shifting out more items
+            if (nextTimeout.id == lastTimeoutId) tracking = false
 
-        // Take out the timeouts that should run
-        let runTimeouts = this.timeouts
-        this.timeouts = this.timeouts.splice(iStop)
+            // Run the timeout if its time, or push it to the end
+            if (now > nextTimeout.time) nextTimeout.run()
+            else this.timeouts.push(nextTimeout)
+        }
 
-        // Run the timeouts directly
-        for (let timeout of runTimeouts)
-            timeout.run()
-
-        /**
-         * Dealing with frames
-         */
-
-        let lastId = this.frameCount
-        while (this.frames.peek() && this.frames.peek().id < lastId) {
+        // Run all of the frames available up until this point
+        let lastFrameId = this.frameCount
+        while (this.frames.peek() && this.frames.peek().id < lastFrameId) {
             let nextFrame = this.frames.shift()
             nextFrame.run(now)
         }

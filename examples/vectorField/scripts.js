@@ -10,7 +10,7 @@ let pageToSvg = canvas.ctm().inverse()
 let f = (x, y)=> (2 * x + y - 650) ** 2 / 10000 + (x - 200) ** 2 / 3000 + 200
 let controller = SVG.controllers.spring({settleTime: 500, overshoot: 20})
 
-canvas.mousemove(e=> {
+canvas.click(e=> {
 
     // Get the current mouse position and transform it into svg space
     let {x, y} = new SVG.Point(e.offsetX, e.offsetY).transform(pageToSvg)

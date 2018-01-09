@@ -29,7 +29,7 @@ canvas.mousemove(e=> {
         follower.declarative()
             .override(override)
             .speed(1.2)
-            .delay(200)
+            .delay(500)
             .center(x + r(-50, 50), y + r(-50, 50))
             .attr("fill-opacity", 0.3 * Math.sin((x + y) / 100) + 0.7)
             .delay(1000)

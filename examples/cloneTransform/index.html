@@ -1,0 +1,26 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Mouse Follower</title>
+
+        <style media="screen">
+            svg {
+                background-color: #ECF0F1;
+            }
+        </style>
+    </head>
+
+    <body>
+
+        <svg id="canvas" width=500px ViewBox="0 0 2000 2000">
+            <path id="arrow" d="M989.087,567.871C977.09,567.871 977.09,555.159 989.087,555.159C1001.1,555.159 1140.81,558.275 1158.83,558.275C1176.85,558.275 1260.68,558.716 1282.71,556.824L1292.19,550.481C1292.19,550.481 1366.04,557.837 1366.04,561.515C1366.04,565.193 1292.19,572.549 1292.19,572.549L1282.71,566.206C1260.68,564.314 1176.85,564.756 1158.83,564.756C1140.81,564.756 1001.1,567.871 989.087,567.871Z" style="fill:#ba76ff;"></path>
+        </svg>
+
+    </body>
+
+    <!-- webpack has a mime type bug for now, so we are just using a cdn -->
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/2.6.3/svg.js" charset="utf-8"></script>
+    <script type="text/javascript" src="./bundle.js" charset="utf-8"></script>
+</html>

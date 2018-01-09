@@ -13,6 +13,7 @@ Check out some demos:
 - [Simple Mouse follower](https://codepen.io/saivan/pen/zpdwpY)
 - [Many body Mouse follower](https://codepen.io/saivan/pen/xpXymb)
 - [Vector field Explorer](https://codepen.io/saivan/pen/vpJmQJ)
+- [Show me where I Clicked](https://codepen.io/saivan/pen/ZvrpYz)
 
 
 # Usage
@@ -20,7 +21,7 @@ Check out some demos:
 To use this library, just include the SVG.js file in the `distribute` folder for your site and run it after you've included svg.js. The api is quite straightforward and very similar to the native animate api. To make an element declarative just call:
 
     element.declarative(<controller>)
-    
+
 This will return an `SVG.declarative` object that you can edit the targets for directly. The controller is just a function that you provide with the signature:
 
     function (error, velocity, acceleration, integral) {
@@ -56,40 +57,40 @@ You can manipulate declaratives by using any of the following methods:
 
 Pauses the currently running animation. If state is true, we force pause, and if false we unpause.
 
-    element.continue()  
+    element.continue()
 
 Continues the animation if it already converged (you probably won't need this yourself).
 
     element.speed(newspeed)
-    
+
 Sets the speed of the animation.
 
     element.delay(time)
-    
+
 Sets a delay before activating a new target. This can be useful to sequence animations.
 
     element.override(should)
-    
+
 If should is true, we always take the last target and ignore all other targets, so if you rapidly set two targets with different delays, we will just take the last one. This happens on a per attribute basis.
 
     element.step(time)
-    
+
 Advances the animation to the time specified. This is also usually called internally any time you change a target, so you probably won't need to use it yourself.
 
     element.controller(newController)
-    
+
 Allows you to pass in another function to act as the new controller from this point forward.
 
     element.affine(useAffine)
-    
+
 If useAffine is true, we attempt to preserve lengths while animating. Otherwise, we will directly morph one transformation into another, which is preferable in some circumstances.
 
     element.around(center)
-    
+
 If we are using affine transformations, we can set a transformation origin. This will guarantee that the transformations happen around a given origin to avoid any weird warping.
 
     element.threshold(amount)
-    
+
 If the change in all controllers is below the amount you specify, the simulation has converged, and we stop stepping to avoid animating forever.
 
 
