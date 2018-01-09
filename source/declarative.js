@@ -177,6 +177,21 @@ SVG.declarative = SVG.invent({
 
     ,   around: function (ox, oy) {
 
+        if (typeof ox == "string") {
+
+            // Get the bounding box and the string provided
+            let {x, y, width, height} = this.element.bbox()
+            let string = ox.toLowerCase().trim()
+
+            // Set the bounds eg : "bottom-left", "Top right", "middle" etc...
+            ox = string.endsWith("left") ? x
+                : string.endsWith("right") ? x + width
+                : x + width / 2
+            oy = string.startsWith("top") ? y
+                : string.startsWith("bottom") ? y + height
+                : y + height / 2
+        }
+
         // Sets the transformation origin explicitly, by default, the
         // transform origin is around the center of the bbox
         this.transformOrigin = [ox, oy]
@@ -415,14 +430,6 @@ SVG.declarative = SVG.invent({
             return this
         }
 
-    ,   position: function (x, y) {
-
-            // Forcibly place the center at the x, y position given
-            let [cx, cy] = this.transformOrigin
-            this.translate(x - cx, y - cy, false)
-            return this
-        }
-
     ,   scale: function (sx, sy, relative=false) {
 
             // The user can provide only one scale for a proportional scale
@@ -480,6 +487,24 @@ SVG.declarative = SVG.invent({
 
     // Syntax Sugar
 
+    ,   position: function (x, y) {
+
+            // Forcibly place the center at the x, y position given
+            let [cx, cy] = this.transformOrigin
+            this.translate(x - cx, y - cy, false)
+            return this
+        }
+
+    ,   width: function (item) {
+            this.attr("width", item)
+            return this
+        }
+
+    ,   height: function (item) {
+            this.attr("height", item)
+            return this
+        }
+
     ,   fill: function (item) {
 
             // Strings are always assumed to be fills
@@ -526,15 +551,11 @@ SVG.declarative = SVG.invent({
             return this
         }
 
-    ,   width: function (item) {
-            this.attr("width", item)
+    ,   opacity: function (amount) {
+            this.attr("opacity", amount)
             return this
         }
 
-    ,   height: function (item) {
-            this.attr("height", item)
-            return this
-        }
     }
 })
 
