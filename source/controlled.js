@@ -81,7 +81,7 @@ class NumberC {
     }
 
     snap () {
-        this.postion = this.currentTarget
+        this.position = this.currentTarget
         this.velocity = 0
         this.acceleration = 0
         this.integral = 0
