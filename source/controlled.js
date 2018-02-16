@@ -18,6 +18,10 @@ class ConstantC {
     step (controller, dt) {
         return 0
     }
+
+    snap () {
+        // Does nothing.
+    }
 }
 
 
@@ -75,8 +79,15 @@ class NumberC {
         let convergence = Math.abs((sNew || 0) + (vNew || 0) + (aNew || 0))
         return convergence
     }
-}
 
+    snap () {
+        this.postion = this.currentTarget
+        this.velocity = 0
+        this.acceleration = 0
+        this.integral = 0
+        this.error = 0
+    }
+}
 
 class CircularC extends NumberC {
 
@@ -96,9 +107,9 @@ class CircularC extends NumberC {
 
     step (controller, dt) {
 
-        let convergence = super.step(controller, dt)
         this.position = this.min + CircularC.mod(this.position, this.range)
-        this.error = this.getError(this.position, this.currentTarget)
+        this.error = this.getError(this.position - this.min, this.currentTarget)
+        let convergence = super.step(controller, dt)
         return convergence
     }
 
@@ -215,6 +226,17 @@ class MatrixC {
         // Return the convergence error
         return convergence
     }
+
+    snap () {
+
+        // Snap the main controllers
+        for (let controller of this.controllers) {
+            controller.snap()
+        }
+
+        // Snap the theta controller
+        this.thetaController.snap()
+    }
 }
 
 
@@ -320,6 +342,11 @@ class ColorC {
         for (let target of this.targets)
             convergence += target.step(controller, dt)
         return convergence
+    }
+
+    snap () {
+        for (let controller of this.targets)
+            controller.snap()
     }
 
     static matches (item) {

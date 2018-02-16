@@ -438,6 +438,60 @@ SVG.declarative = SVG.invent({
         delay: function delay(time) {
             this.targetTime += time / this.playSpeed;
             return this;
+        },
+
+        snap: function snap() {
+
+            // Immediately snaps every controller to their current target and
+            // zeros out their velocities
+            var _iteratorNormalCompletion3 = true;
+            var _didIteratorError3 = false;
+            var _iteratorError3 = undefined;
+
+            try {
+                for (var _iterator3 = this.targets[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+                    var target = _step3.value;
+                    var _iteratorNormalCompletion4 = true;
+                    var _didIteratorError4 = false;
+                    var _iteratorError4 = undefined;
+
+                    try {
+                        for (var _iterator4 = target.inputs[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+                            var input = _step4.value;
+
+                            input.snap();
+                        }
+                    } catch (err) {
+                        _didIteratorError4 = true;
+                        _iteratorError4 = err;
+                    } finally {
+                        try {
+                            if (!_iteratorNormalCompletion4 && _iterator4.return) {
+                                _iterator4.return();
+                            }
+                        } finally {
+                            if (_didIteratorError4) {
+                                throw _iteratorError4;
+                            }
+                        }
+                    }
+                } // Continue if we've stopped
+            } catch (err) {
+                _didIteratorError3 = true;
+                _iteratorError3 = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion3 && _iterator3.return) {
+                        _iterator3.return();
+                    }
+                } finally {
+                    if (_didIteratorError3) {
+                        throw _iteratorError3;
+                    }
+                }
+            }
+
+            this.continue();
         }
 
         /**
@@ -851,6 +905,11 @@ var ConstantC = function () {
         value: function step(controller, dt) {
             return 0;
         }
+    }, {
+        key: "snap",
+        value: function snap() {
+            // Does nothing.
+        }
     }]);
 
     return ConstantC;
@@ -918,6 +977,15 @@ var NumberC = function () {
             var convergence = Math.abs((sNew || 0) + (vNew || 0) + (aNew || 0));
             return convergence;
         }
+    }, {
+        key: "snap",
+        value: function snap() {
+            this.postion = this.currentTarget;
+            this.velocity = 0;
+            this.acceleration = 0;
+            this.integral = 0;
+            this.error = 0;
+        }
     }]);
 
     return NumberC;
@@ -949,9 +1017,9 @@ var CircularC = function (_NumberC) {
         key: "step",
         value: function step(controller, dt) {
 
-            var convergence = _get(CircularC.prototype.__proto__ || Object.getPrototypeOf(CircularC.prototype), "step", this).call(this, controller, dt);
             this.position = this.min + CircularC.mod(this.position, this.range);
-            this.error = this.getError(this.position, this.currentTarget);
+            this.error = this.getError(this.position - this.min, this.currentTarget);
+            var convergence = _get(CircularC.prototype.__proto__ || Object.getPrototypeOf(CircularC.prototype), "step", this).call(this, controller, dt);
             return convergence;
         }
     }], [{
@@ -1113,6 +1181,40 @@ var MatrixC = function () {
             // Return the convergence error
             return convergence;
         }
+    }, {
+        key: "snap",
+        value: function snap() {
+
+            // Snap the main controllers
+            var _iteratorNormalCompletion2 = true;
+            var _didIteratorError2 = false;
+            var _iteratorError2 = undefined;
+
+            try {
+                for (var _iterator2 = this.controllers[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+                    var controller = _step2.value;
+
+                    controller.snap();
+                }
+
+                // Snap the theta controller
+            } catch (err) {
+                _didIteratorError2 = true;
+                _iteratorError2 = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion2 && _iterator2.return) {
+                        _iterator2.return();
+                    }
+                } finally {
+                    if (_didIteratorError2) {
+                        throw _iteratorError2;
+                    }
+                }
+            }
+
+            this.thetaController.snap();
+        }
     }]);
 
     return MatrixC;
@@ -1237,32 +1339,60 @@ var ColorC = function () {
         key: "step",
         value: function step(controller, dt) {
             var convergence = 0;
-            var _iteratorNormalCompletion2 = true;
-            var _didIteratorError2 = false;
-            var _iteratorError2 = undefined;
+            var _iteratorNormalCompletion3 = true;
+            var _didIteratorError3 = false;
+            var _iteratorError3 = undefined;
 
             try {
-                for (var _iterator2 = this.targets[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-                    var target = _step2.value;
+                for (var _iterator3 = this.targets[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+                    var target = _step3.value;
 
                     convergence += target.step(controller, dt);
                 }
             } catch (err) {
-                _didIteratorError2 = true;
-                _iteratorError2 = err;
+                _didIteratorError3 = true;
+                _iteratorError3 = err;
             } finally {
                 try {
-                    if (!_iteratorNormalCompletion2 && _iterator2.return) {
-                        _iterator2.return();
+                    if (!_iteratorNormalCompletion3 && _iterator3.return) {
+                        _iterator3.return();
                     }
                 } finally {
-                    if (_didIteratorError2) {
-                        throw _iteratorError2;
+                    if (_didIteratorError3) {
+                        throw _iteratorError3;
                     }
                 }
             }
 
             return convergence;
+        }
+    }, {
+        key: "snap",
+        value: function snap() {
+            var _iteratorNormalCompletion4 = true;
+            var _didIteratorError4 = false;
+            var _iteratorError4 = undefined;
+
+            try {
+                for (var _iterator4 = this.targets[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+                    var controller = _step4.value;
+
+                    controller.snap();
+                }
+            } catch (err) {
+                _didIteratorError4 = true;
+                _iteratorError4 = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion4 && _iterator4.return) {
+                        _iterator4.return();
+                    }
+                } finally {
+                    if (_didIteratorError4) {
+                        throw _iteratorError4;
+                    }
+                }
+            }
         }
     }], [{
         key: "matches",

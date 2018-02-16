@@ -4,16 +4,19 @@ import "declarative/declarative"
 let canvas = SVG.select("#canvas").first()
 let target = SVG.select("#target").first()
 let triangle = SVG.select("#vector").first()
+let vecTarget = SVG.select("#vectorTarget").first()
 
 // Get the matrix to move to the svg space
-let pageToSvg = canvas.ctm().inverse()
-let f = (x, y)=> (2 * x + y - 650) ** 2 / 10000 + (x - 200) ** 2 / 3000 + 200
-let controller = SVG.controllers.spring({settleTime: 500, overshoot: 20})
+let f = (x, y)=> 0.2 * (Math.sin(x / 10) * Math.cos(y / 10) + 0.5)
+let controller = SVG.controllers.spring({settleTime: 800, overShoot: 10})
+let t = 0
 
-canvas.click(e=> {
+setInterval(()=> {
 
     // Get the current mouse position and transform it into svg space
-    let {x, y} = new SVG.Point(e.offsetX, e.offsetY).transform(pageToSvg)
+    // let {x, y} = canvas.point(e.pageX, e.pageY)
+    let [x, y] = [ 500 + 300 * Math.cos(t), 500 + 300 * Math.sin(t)]
+    t += 0.002
 
     // Work out the vector length and rotation
     let fxy = f(x, y)
@@ -24,7 +27,7 @@ canvas.click(e=> {
 
     // Move the target to the required place
     target.declarative(controller)
-        .scale(fxy / 200)
+        .scale(1 + fxy)
         .position(x, y)
 
     // Change the transforms
@@ -32,5 +35,15 @@ canvas.click(e=> {
         .around(100, 100)
         .rotate(ang)
         .position(x, y)
-        .scale(2 * len, fxy / 400)
+        .scale(100 * len, 1 + fxy)
+
+    vecTarget.untransform()
+        .translate(x, y)
+        .rotate(ang, 0, 0)
+        .scale(100 * len, 1 + fxy, 0, 0)
+
+}, 16)
+
+canvas.click(()=> {
+    triangle.declarative().snap()
 })

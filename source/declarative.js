@@ -214,6 +214,18 @@ SVG.declarative = SVG.invent({
             return this
         }
 
+    ,   snap: function () {
+
+        // Immediately snaps every controller to their current target and
+        // zeros out their velocities
+        for (let target of this.targets)
+            for (let input of target.inputs)
+                input.snap()
+
+        // Continue if we've stopped
+        this.continue()
+    }
+
     /**
      * Methods that modify the current targets
      */
