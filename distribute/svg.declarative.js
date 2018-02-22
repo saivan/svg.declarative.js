@@ -442,6 +442,9 @@ SVG.declarative = SVG.invent({
 
         snap: function snap() {
 
+            // Work out when to run the snap
+            var waitFor = Math.max(0, this.targetTime - timer.now());
+
             // Immediately snaps every controller to their current target and
             // zeros out their velocities
             var _iteratorNormalCompletion3 = true;
@@ -451,6 +454,13 @@ SVG.declarative = SVG.invent({
             try {
                 for (var _iterator3 = this.targets[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
                     var target = _step3.value;
+
+                    var _loop = function _loop(input) {
+                        draw.timeout(function () {
+                            return input.snap();
+                        }, waitFor);
+                    };
+
                     var _iteratorNormalCompletion4 = true;
                     var _didIteratorError4 = false;
                     var _iteratorError4 = undefined;
@@ -459,7 +469,7 @@ SVG.declarative = SVG.invent({
                         for (var _iterator4 = target.inputs[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
                             var input = _step4.value;
 
-                            input.snap();
+                            _loop(input);
                         }
                     } catch (err) {
                         _didIteratorError4 = true;

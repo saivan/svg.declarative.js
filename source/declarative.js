@@ -216,11 +216,14 @@ SVG.declarative = SVG.invent({
 
     ,   snap: function () {
 
+        // Work out when to run the snap
+        let waitFor = Math.max(0, this.targetTime - timer.now())
+
         // Immediately snaps every controller to their current target and
         // zeros out their velocities
         for (let target of this.targets)
             for (let input of target.inputs)
-                input.snap()
+                draw.timeout(()=> input.snap(), waitFor)
 
         // Continue if we've stopped
         this.continue()
