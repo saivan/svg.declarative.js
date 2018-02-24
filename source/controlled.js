@@ -51,10 +51,14 @@ class NumberC {
     }
 
     value () {
+
+        // Bound the value between the maximum and minimum provided if the exist
         let value = value < this.min ? this.min
             : value > this.max ? this.max
             : this.position
-        return this.position
+
+        // Since we need a float32, make sure we don't output tiny numbers
+        return Math.abs (value) > 1e-37 ? value : 0
     }
 
     step (controller, dt) {
